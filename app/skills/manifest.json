@@ -6,10 +6,14 @@
     "i18n": "i18n/i18n.properties",
     "title": "{{appTitle}}",
     "description": "{{appDescription}}",
+    "tags": { "keywords": ["skill", "catalog", "sap", "abap"] },
     "applicationVersion": { "version": "1.0.0" }
   },
   "sap.ui": {
     "technology": "UI5",
+    "icons": {
+      "icon": "sap-icon://competitor"
+    },
     "deviceTypes": { "desktop": true, "tablet": true, "phone": true }
   },
   "sap.ui5": {
@@ -39,6 +43,11 @@
         }
       }
     },
-    "contentDensities": { "compact": true, "cozy": true }
+    "contentDensities": { "compact": true, "cozy": true },
+    "resources": {
+      "css": [
+        { "uri": "css/style.css" }
+      ]
+    }
   }
 }

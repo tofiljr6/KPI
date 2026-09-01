@@ -189,6 +189,13 @@ sap.ui.define([
                 MessageToast.show(this._i18n("nothingToSave"));
                 return;
             }
+
+            var skill = m.getProperty("/skill") || {};
+            if (!(skill.SkillName || "").trim() || !(skill.QueryTable || "").trim()) {
+                MessageBox.warning(this._i18n("missingRequired"));
+                return;
+            }
+
             m.setProperty("/busy", true);
 
             this._postAction(REPOSITORY, "createSkill", { skill: m.getProperty("/skill") })

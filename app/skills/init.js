@@ -3,6 +3,9 @@ sap.ui.define([
 ], function (ComponentContainer) {
     "use strict";
 
+    var splash = document.getElementById("kip-splash");
+    if (splash) { splash.parentNode.removeChild(splash); }
+
     new ComponentContainer({
         name: "kip.skillauthoring",
         manifest: true,

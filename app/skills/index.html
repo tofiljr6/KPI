@@ -3,7 +3,17 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Skill Authoring</title>
+    <title>Skill Catalog</title>
+
+    <style>
+        html, body { height: 100%; margin: 0; }
+        #kip-splash {
+            position: fixed; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-family: "72", "72full", Arial, Helvetica, sans-serif;
+            color: #556b82; background: #f5f6f7;
+        }
+    </style>
 
     <script
         id="sap-ui-bootstrap"
@@ -12,6 +22,7 @@
         data-sap-ui-libs="sap.m,sap.f,sap.uxap,sap.ui.layout,sap.ui.core"
         data-sap-ui-compat-version="edge"
         data-sap-ui-async="true"
+        data-sap-ui-xx-waitForTheme="rendering"
         data-sap-ui-xx-component-preload="off"
         data-sap-ui-language="en"
         data-sap-ui-frame-options="trusted"
@@ -19,5 +30,7 @@
         data-sap-ui-on-init="module:kip/skillauthoring/init">
     </script>
 </head>
-<body class="sapUiBody" id="content"></body>
+<body class="sapUiBody" id="content">
+    <div id="kip-splash">Loading Skill Catalog…</div>
+</body>
 </html>

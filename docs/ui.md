@@ -14,19 +14,20 @@ One `sap.m.App` (NavContainer) with two pages.
 ### 1. List Report — `listPage`
 
 - `sap.f.ShellBar` header ("Skill Catalog" / "KIP" + avatar)
-- Sub-header toolbar: title + count, `SearchField` (filters by name / table / description),
-  refresh, and **Create New Skill** (top-right, emphasized)
-- `sap.m.Table` of all skills from `GET /skill-repository/getSkills()`
-  (columns: Skill, Table, Fields, Where — the last two pop in on small screens)
+- `sap.m.Table` header toolbar: title + count badge, `SearchField` (filters by
+  name / table / description), refresh, and **Create New Skill** (emphasized)
+- `sap.m.Table` of all skills from `GET /skill-repository/getSkills()` — columns
+  Skill, Table (as an `ObjectStatus`), Fields, Where; `autoPopinMode` collapses
+  the lower-priority columns on small screens; sticky column headers + toolbar
 - Row press → read-only details dialog (`view/SkillDetails.fragment.xml`)
-- Empty state: `IllustratedMessage`
+- Empty state: `IllustratedMessage` with a Create action
 
 ### 2. Object Page — `createPage`
 
 `sap.uxap.ObjectPageLayout` (the Fiori Object Page floorplan):
 
-- **Header title**: the skill name (or "New Skill"), with **Cancel** / **Save** actions
-- **Header content**: the natural-language prompt + **Generate**
+- **Header title**: the skill name (or "New Skill") + a one-line hint
+- **Header content**: the natural-language prompt (on a card) + **Generate**
 - **Section "Skill definition"**: editable form — `SkillName`, `SkillDescription`,
   `SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere`
 - **Section "Model analysis"** (shown after generate): `reasoning`, chosen table,
@@ -41,13 +42,17 @@ the list, which refreshes. Nothing is persisted before Save.
 
 ```
 app/skills/
-├── index.html                      UI5 bootstrap (CDN)
+├── index.html                      UI5 bootstrap (CDN) + loading splash
 ├── init.js  ·  Component.js  ·  manifest.json
 ├── view/App.view.xml               list page + object page
 ├── view/SkillDetails.fragment.xml  row details dialog
 ├── controller/App.controller.js    fetch + CSRF + navigation
+├── css/style.css                   small polish on top of sap_horizon
 └── i18n/i18n.properties
 ```
+
+`css/style.css` is registered via `sap.ui5/resources/css` in `manifest.json`
+(monospace for technical fields, a card around the prompt box, form max-width).
 
 ## How it calls the backend
 

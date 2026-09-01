@@ -11,6 +11,7 @@
 
         <!-- ============ LIST REPORT ============ -->
         <Page id="listPage" backgroundDesign="List">
+
             <customHeader>
                 <f:ShellBar
                     title="{i18n>shellTitle}"
@@ -25,43 +26,73 @@
                 </f:ShellBar>
             </customHeader>
 
-            <subHeader>
-                <OverflowToolbar>
-                    <Title text="{i18n>listTitle}" level="H2" />
-                    <ObjectStatus text="{= (${/skills} || []).length }" state="Information" class="sapUiTinyMarginBegin" />
-                    <ToolbarSpacer />
-                    <SearchField width="18rem" placeholder="{i18n>search}" search=".onSearch" liveChange=".onSearch" />
-                    <Button icon="sap-icon://refresh" tooltip="{i18n>refresh}" press=".onRefresh" />
-                    <Button text="{i18n>createNew}" type="Emphasized" icon="sap-icon://add" press=".onOpenCreate" />
-                </OverflowToolbar>
-            </subHeader>
-
             <content>
                 <Table
                     id="skillsTable"
                     items="{/skills}"
+                    busy="{/busy}"
+                    busyIndicatorDelay="0"
                     growing="true"
                     growingThreshold="50"
-                    busy="{/busy}"
+                    growingScrollToLoad="true"
                     mode="None"
                     sticky="ColumnHeaders,HeaderToolbar"
+                    autoPopinMode="true"
+                    popinLayout="GridSmall"
+                    alternateRowColors="true"
                     class="sapUiResponsiveMargin"
                     width="auto">
 
+                    <headerToolbar>
+                        <OverflowToolbar>
+                            <Title id="listTitle" text="{i18n>listTitle}" level="H2" />
+                            <ObjectStatus
+                                text="{= (${/skills} || []).length }"
+                                state="Information"
+                                inverted="true"
+                                class="sapUiTinyMarginBegin" />
+                            <ToolbarSpacer />
+                            <SearchField
+                                width="18rem"
+                                placeholder="{i18n>search}"
+                                search=".onSearch"
+                                liveChange=".onSearch" />
+                            <Button
+                                icon="sap-icon://refresh"
+                                type="Transparent"
+                                tooltip="{i18n>refresh}"
+                                press=".onRefresh" />
+                            <ToolbarSeparator />
+                            <Button
+                                text="{i18n>createNew}"
+                                type="Emphasized"
+                                icon="sap-icon://add"
+                                press=".onOpenCreate" />
+                        </OverflowToolbar>
+                    </headerToolbar>
+
                     <columns>
-                        <Column width="18rem"><Text text="{i18n>colName}" /></Column>
-                        <Column width="9rem"><Text text="{i18n>colTable}" /></Column>
-                        <Column minScreenWidth="Tablet" demandPopin="true"><Text text="{i18n>colFields}" /></Column>
-                        <Column minScreenWidth="Desktop" demandPopin="true"><Text text="{i18n>colWhere}" /></Column>
+                        <Column width="20rem" importance="High">
+                            <Text text="{i18n>colName}" />
+                        </Column>
+                        <Column width="10rem" hAlign="Begin" importance="High">
+                            <Text text="{i18n>colTable}" />
+                        </Column>
+                        <Column importance="Medium">
+                            <Text text="{i18n>colFields}" />
+                        </Column>
+                        <Column importance="Low">
+                            <Text text="{i18n>colWhere}" />
+                        </Column>
                     </columns>
 
                     <items>
                         <ColumnListItem type="Navigation" press=".onOpenDetails">
                             <cells>
                                 <ObjectIdentifier title="{SkillName}" text="{SkillDescription}" />
-                                <Text text="{QueryTable}" />
-                                <Text text="{QueryFields}" />
-                                <Text text="{QueryWhere}" />
+                                <ObjectStatus text="{QueryTable}" state="Information" />
+                                <Text text="{QueryFields}" class="kipMono" emptyIndicatorMode="On" />
+                                <Text text="{QueryWhere}" class="kipMono" emptyIndicatorMode="On" />
                             </cells>
                         </ColumnListItem>
                     </items>
@@ -70,7 +101,15 @@
                         <IllustratedMessage
                             illustrationType="sapIllus-NoEntries"
                             title="{i18n>noSkillsTitle}"
-                            description="{i18n>noSkillsText}" />
+                            description="{i18n>noSkillsText}">
+                            <additionalContent>
+                                <Button
+                                    text="{i18n>createNew}"
+                                    type="Emphasized"
+                                    icon="sap-icon://add"
+                                    press=".onOpenCreate" />
+                            </additionalContent>
+                        </IllustratedMessage>
                     </noData>
                 </Table>
             </content>
@@ -78,6 +117,7 @@
 
         <!-- ============ OBJECT PAGE – CREATE ============ -->
         <Page id="createPage" backgroundDesign="Standard">
+
             <customHeader>
                 <f:ShellBar
                     title="{i18n>shellTitle}"
@@ -91,7 +131,14 @@
             </customHeader>
 
             <content>
-                <uxap:ObjectPageLayout id="createOP" showTitleInHeaderContent="true" upperCaseAnchorBar="false" busy="{create>/busy}">
+                <uxap:ObjectPageLayout
+                    id="createOP"
+                    class="kipCreatePage"
+                    showTitleInHeaderContent="true"
+                    upperCaseAnchorBar="false"
+                    useIconTabBar="false"
+                    busy="{create>/busy}"
+                    busyIndicatorDelay="0">
 
                     <uxap:headerTitle>
                         <uxap:ObjectPageDynamicHeaderTitle>
@@ -99,32 +146,32 @@
                                 <Title text="{= ${create>/skill/SkillName} || ${i18n>newSkillTitle} }" />
                             </uxap:heading>
                             <uxap:snappedContent>
-                                <Text text="{create>/query}" />
+                                <Text text="{= ${create>/query} || ${i18n>promptLabel} }" maxLines="1" />
                             </uxap:snappedContent>
-                            <uxap:actions>
-                                <Button text="{i18n>cancel}" press=".onCloseCreate" />
-                                <Button
-                                    text="{i18n>save}"
-                                    type="Emphasized"
-                                    icon="sap-icon://save"
-                                    enabled="{= ${create>/generated} &amp;&amp; !${create>/busy} }"
-                                    press=".onSaveNew" />
-                            </uxap:actions>
+                            <uxap:expandedContent>
+                                <Text text="{i18n>newSkillHint}" />
+                            </uxap:expandedContent>
                         </uxap:ObjectPageDynamicHeaderTitle>
                     </uxap:headerTitle>
 
                     <uxap:headerContent>
-                        <VBox width="100%" class="sapUiSmallMarginBottom">
-                            <Label text="{i18n>promptLabel}" labelFor="prompt" />
+                        <VBox width="100%" class="kipPromptBox">
+                            <Label text="{i18n>promptLabel}" labelFor="prompt" design="Bold" />
                             <TextArea
                                 id="prompt"
                                 width="100%"
-                                rows="2"
+                                rows="3"
                                 growing="true"
+                                growingMaxLines="8"
+                                valueLiveUpdate="true"
                                 value="{create>/query}"
                                 placeholder="{i18n>promptPlaceholder}"
-                                class="sapUiTinyMarginBottom" />
-                            <HBox justifyContent="End" width="100%">
+                                class="sapUiTinyMarginTop sapUiTinyMarginBottom" />
+                            <HBox justifyContent="End" alignItems="Center" width="100%">
+                                <Text
+                                    visible="{create>/generated}"
+                                    text="{i18n>generatedHint}"
+                                    class="sapUiTinyMarginEnd" />
                                 <Button
                                     text="{= ${create>/busy} ? ${i18n>generating} : (${create>/generated} ? ${i18n>regenerate} : ${i18n>generate}) }"
                                     type="Emphasized"
@@ -136,18 +183,16 @@
                     </uxap:headerContent>
 
                     <uxap:sections>
-                        <uxap:ObjectPageSection title="{i18n>draftGroup}">
+                        <uxap:ObjectPageSection titleUppercase="false" title="{i18n>draftGroup}">
                             <uxap:subSections>
                                 <uxap:ObjectPageSubSection>
                                     <VBox width="100%">
-                                        <HBox justifyContent="Center" width="100%">
-                                            <MessageStrip
-                                                visible="{create>/generated}"
-                                                type="Information"
-                                                showIcon="true"
-                                                text="{i18n>genOk}"
-                                                class="sapUiSmallMarginBottom sapUiTinyMarginTop" />
-                                        </HBox>
+                                        <MessageStrip
+                                            visible="{create>/generated}"
+                                            type="Success"
+                                            showIcon="true"
+                                            text="{i18n>genOk}"
+                                            class="sapUiSmallMarginBottom" />
                                         <form:SimpleForm
                                             width="100%"
                                             maxContainerCols="1"
@@ -158,25 +203,25 @@
                                             emptySpanXL="1" emptySpanL="1" emptySpanM="0"
                                             columnsXL="1" columnsL="1" columnsM="1"
                                             singleContainerFullSize="true">
-                                            <Label text="{i18n>fName}" />
-                                            <Input value="{create>/skill/SkillName}" />
+                                            <Label text="{i18n>fName}" required="true" />
+                                            <Input value="{create>/skill/SkillName}" placeholder="{i18n>fNamePh}" />
                                             <Label text="{i18n>fDescription}" />
                                             <TextArea value="{create>/skill/SkillDescription}" rows="2" growing="true" width="100%" />
                                             <Label text="{i18n>fTrigger}" />
                                             <TextArea value="{create>/skill/SkillTriggerText}" rows="2" growing="true" width="100%" />
-                                            <Label text="{i18n>fTable}" />
-                                            <Input value="{create>/skill/QueryTable}" />
+                                            <Label text="{i18n>fTable}" required="true" />
+                                            <Input value="{create>/skill/QueryTable}" class="kipMono" placeholder="e.g. BUT000" />
                                             <Label text="{i18n>fFields}" />
-                                            <TextArea value="{create>/skill/QueryFields}" rows="2" growing="true" width="100%" />
+                                            <TextArea value="{create>/skill/QueryFields}" rows="2" growing="true" width="100%" class="kipMono" />
                                             <Label text="{i18n>fWhere}" />
-                                            <Input value="{create>/skill/QueryWhere}" />
+                                            <Input value="{create>/skill/QueryWhere}" class="kipMono" />
                                         </form:SimpleForm>
                                     </VBox>
                                 </uxap:ObjectPageSubSection>
                             </uxap:subSections>
                         </uxap:ObjectPageSection>
 
-                        <uxap:ObjectPageSection title="{i18n>analysisGroup}" visible="{create>/generated}">
+                        <uxap:ObjectPageSection titleUppercase="false" title="{i18n>analysisGroup}" visible="{create>/generated}">
                             <uxap:subSections>
                                 <uxap:ObjectPageSubSection>
                                     <form:SimpleForm
@@ -184,25 +229,26 @@
                                         maxContainerCols="1"
                                         editable="false"
                                         layout="ResponsiveGridLayout"
-                                        labelSpanXL="2" labelSpanL="2" labelSpanM="3" labelSpanS="12"
+                                        labelSpanXL="3" labelSpanL="3" labelSpanM="3" labelSpanS="12"
                                         adjustLabelSpan="false"
-                                        emptySpanXL="0" emptySpanL="0" emptySpanM="0"
+                                        emptySpanXL="1" emptySpanL="1" emptySpanM="0"
                                         columnsXL="1" columnsL="1" columnsM="1"
                                         singleContainerFullSize="true">
-                                        <Label text="{i18n>aReasoning}" />
-                                        <Text text="{create>/meta/reasoning}" />
-                                        <Label text="{i18n>aTable}" />
-                                        <Text text="{create>/meta/table}" />
-                                        <Label text="{i18n>aKey}" />
-                                        <Text text="{create>/meta/keyField}" />
                                         <Label text="{i18n>aConfidence}" />
                                         <ObjectStatus
-                                            text="{create>/meta/confidence}"
+                                            text="{= ${create>/meta/confidence} || '–' }"
+                                            icon="{= ${create>/meta/confidence} === 'high' ? 'sap-icon://message-success' : (${create>/meta/confidence} === 'medium' ? 'sap-icon://message-warning' : 'sap-icon://message-error') }"
                                             state="{= ${create>/meta/confidence} === 'high' ? 'Success' : (${create>/meta/confidence} === 'medium' ? 'Warning' : 'Error') }" />
+                                        <Label text="{i18n>aTable}" />
+                                        <ObjectStatus text="{= ${create>/meta/table} || '–' }" state="Information" />
+                                        <Label text="{i18n>aKey}" />
+                                        <Text text="{= ${create>/meta/keyField} || '–' }" class="kipMono" />
+                                        <Label text="{i18n>aReasoning}" />
+                                        <Text text="{= ${create>/meta/reasoning} || '–' }" />
                                         <Label text="{i18n>aAlternatives}" />
-                                        <Text text="{create>/meta/alternatives}" />
+                                        <Text text="{= ${create>/meta/alternatives} || '–' }" class="kipMono" />
                                         <Label text="{i18n>aCandidates}" />
-                                        <Text text="{create>/meta/candidateFields}" />
+                                        <Text text="{= ${create>/meta/candidateFields} || '–' }" class="kipMono" />
                                     </form:SimpleForm>
                                 </uxap:ObjectPageSubSection>
                             </uxap:subSections>
