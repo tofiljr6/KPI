@@ -90,7 +90,9 @@ export async function runSkillAgent(query) {
   const run = await executor.invoke({ input: query })
 
   const sources = []
-  for (const [action, observation] of run.intermediateSteps || []) {
+  for (const step of run.intermediateSteps || []) {
+    const action = step?.action ?? step?.[0]
+    const observation = step?.observation ?? step?.[1]
     if (action?.tool !== 'search_web') continue
     try {
       for (const r of JSON.parse(observation).results || []) {
