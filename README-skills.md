@@ -1,18 +1,43 @@
-# SkillsService – ABAP connection test
+# SkillsService – ABAP OData bridge
 
-Direct call to the ABAP REST API through destination **`SA1_300`**
-(`@sap-cloud-sdk/http-client` + `getDestination`), no remote model.
+Direct call to the ABAP OData service through destination **`SA1_300`**
+(`@sap-cloud-sdk/http-client` + `getDestination`).
 
-## Endpoints
+## Backend (OData V2, SAP Gateway)
+
+| Method | URL                                                     |
+|--------|---------------------------------------------------------|
+| GET    | `/sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet`            |
+| GET    | `/sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet('<id>')`    |
+| POST   | `/sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet`            |
+
+## CAP endpoints
 
 After `cds watch` (service under `/odata/v4/skills-service`):
 
-| Endpoint                              | Calls in ABAP                       |
-|--------------------------------------|-------------------------------------|
-| `GET /getSkills()`                    | `GET /sap/bc/zxxx_skills`            |
-| `GET /getSkill(id='0B385AA0…')`       | `GET /sap/bc/zxxx_skills/{id}`       |
+| Endpoint                          | Backend call                    |
+|----------------------------------|---------------------------------|
+| `GET  /getSkills()`               | `GET SkillSet`                  |
+| `GET  /getSkill(id='...')`        | `GET SkillSet('<id>')`          |
+| `POST /createSkill`               | `POST SkillSet` (+ CSRF token)  |
 
-Returns the raw payload as a string and logs `DESTINATION` details plus the HTTP status.
+`createSkill` body:
+
+```json
+{
+  "skill": {
+    "SkillName": "GetBusinessPartnerIdentifications",
+    "SkillDescription": "Returns identification numbers assigned to a business partner",
+    "SkillTriggerText": "Use this skill when the user asks for identification numbers of a business partner",
+    "QueryTable": "BUT0ID",
+    "QueryFields": "PARTNER, TYPE, IDNUMBER, IDINSTITUTE, ENTRY_DATE, VALID_DATE_FROM, VALID_DATE_TO",
+    "QueryWhere": "PARTNER = '{partner}'"
+  }
+}
+```
+
+All endpoints return the raw backend payload as a string and log `DESTINATION` details
+plus the HTTP status. POST first fetches an `X-CSRF-Token` from the service document.
 
 ## Run
 
@@ -50,22 +75,8 @@ instances into the `hybrid` profile.
    cds bind -2 kip-connectivity
    ```
 
-   Check the result with `cds bind --resolve --profile hybrid`.
-
-4. Run with the hybrid profile so the SDK routes through the bound services:
+4. Run with the hybrid profile:
 
    ```bash
    cds watch --profile hybrid
    ```
-
-   If the connectivity proxy is not picked up, start via:
-
-   ```bash
-   cds bind --exec -- cds watch --profile hybrid
-   ```
-
-Alternatively, skip CF and define the destination locally in `.env` (do not commit):
-
-```
-destinations=[{"name":"SA1_300","url":"https://<host>","username":"<user>","password":"<pass>"}]
-```
