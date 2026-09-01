@@ -49,11 +49,16 @@ The GET/POST-to-SkillSet endpoints return the raw backend payload as a string an
 { "query": "chcę dostać dane adresowe partnera" }
 ```
 
-A single LangChain structured-output call (`srv/lib/skillAgent.js`) with a system
-prompt that makes the model act as an SAP Business Partner expert. It must pick ONE
-BP-domain table (BUT000, BUT020, BUT021_FS, ADRC, ADR2/3/6, BUT0ID, BUT0BK, BUT100)
-and return the `createSkill` payload: `SkillName`, `SkillDescription`,
-`SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere` plus `reasoning`.
+`srv/lib/skillAgent.js`, system prompt = senior SAP expert across all modules
+(SD, MM, FI/CO, HCM, PP, BP, …). Three steps:
+
+1. **assess** – does the model already know the exact table + fields? If not, it
+   emits a web search query.
+2. **research** – keyless web search (DuckDuckGo, biased to SAP) + the top result's
+   page text. No API key needed.
+3. **draft** – structured output: the `createSkill` payload (`SkillName`,
+   `SkillDescription`, `SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere`)
+   plus `reasoning` and `sources`.
 
 `generateSkill` returns the draft only. `generateAndCreateSkill` also POSTs it to the
 ABAP service (returns the draft JSON with `error` set if generation failed).
