@@ -15,11 +15,13 @@ Direct call to the ABAP OData service through destination **`SA1_300`**
 
 After `cds watch` (service under `/odata/v4/skills-service`):
 
-| Endpoint                          | Backend call                    |
-|----------------------------------|---------------------------------|
-| `GET  /getSkills()`               | `GET SkillSet`                  |
-| `GET  /getSkill(id='...')`        | `GET SkillSet('<id>')`          |
-| `POST /createSkill`               | `POST SkillSet` (+ CSRF token)  |
+| Endpoint                          | What it does                                   |
+|----------------------------------|-----------------------------------------------|
+| `GET  /getSkills()`               | `GET SkillSet`                                |
+| `GET  /getSkill(id='...')`        | `GET SkillSet('<id>')`                        |
+| `POST /createSkill`               | `POST SkillSet` (+ CSRF token)                |
+| `POST /generateSkill`             | NL request → skill draft (LangGraph, no save) |
+| `POST /generateAndCreateSkill`    | `generateSkill` then `createSkill`            |
 
 `createSkill` body:
 
@@ -36,8 +38,37 @@ After `cds watch` (service under `/odata/v4/skills-service`):
 }
 ```
 
-All endpoints return the raw backend payload as a string and log `DESTINATION` details
-plus the HTTP status. POST first fetches an `X-CSRF-Token` from the service document.
+The GET/POST-to-SkillSet endpoints return the raw backend payload as a string and log
+`DESTINATION` details plus the HTTP status. POST first fetches an `X-CSRF-Token`.
+
+### Skill generation (LangChain agent)
+
+`generateSkill` / `generateAndCreateSkill` body:
+
+```json
+{ "query": "chcę dostać dane adresowe partnera" }
+```
+
+A LangChain tool-calling agent (`srv/lib/skillAgent.js`) with one tool, `search_web`
+(`srv/lib/searchTool.js` → Tavily). The agent is instructed to research the SAP
+Business Partner data model (BUT000, BUT020, BUT0ID, ADRC, ADR6, …), pick ONE
+transparent table, and return the `createSkill` payload: `SkillName`,
+`SkillDescription`, `SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere`
+plus `reasoning` and `sources`.
+
+Without `TAVILY_API_KEY` the tool returns nothing and the agent falls back to its
+own SAP knowledge.
+
+`generateSkill` returns the draft only. `generateAndCreateSkill` also POSTs it to the
+ABAP service (returns the draft JSON with `error` set if generation failed).
+
+Requires `OPENAI_API_KEY` in `.env` (see `.env.example`).
+
+Local test without CAP:
+
+```bash
+OPENAI_API_KEY=sk-... TAVILY_API_KEY=tvly-... node scripts/test-skill-agent.js "chcę dostać dane adresowe partnera"
+```
 
 ## Run
 

@@ -1,6 +1,7 @@
 import cds from '@sap/cds'
 import { executeHttpRequest } from '@sap-cloud-sdk/http-client'
 import { getDestination } from '@sap-cloud-sdk/connectivity'
+import { runSkillAgent } from './lib/skillAgent.js'
 
 const DESTINATION_NAME = 'SA1_300'
 const SERVICE_PATH = '/sap/opu/odata/sap/ZXXXX_SKILL_SRV'
@@ -21,20 +22,39 @@ export default cds.service.impl(function () {
   this.on('createSkill', async (req) => {
     const { skill } = req.data
     if (!skill || !skill.SkillName) return req.error(400, 'Missing "skill.SkillName"')
+    return createSkill(req, skill)
+  })
 
-    const destination = await resolveDestination(req)
-    const csrf = await fetchCsrfToken(destination)
+  this.on('generateSkill', async (req) => {
+    const { query } = req.data
+    if (!query || !query.trim()) return req.error(400, 'Missing "query"')
+    try {
+      return await runSkillAgent(query)
+    } catch (err) {
+      console.error('GENERATE FAILED')
+      console.error(err)
+      return req.error(500, err.message)
+    }
+  })
 
-    return odata(req, {
-      method: 'POST',
-      url: `${SERVICE_PATH}/${ENTITY_SET}`,
-      data: skill,
-      headers: {
-        'X-CSRF-Token': csrf.token,
-        ...(csrf.cookie ? { Cookie: csrf.cookie } : {}),
-        'Content-Type': 'application/json',
-      },
-    }, destination)
+  this.on('generateAndCreateSkill', async (req) => {
+    const { query } = req.data
+    if (!query || !query.trim()) return req.error(400, 'Missing "query"')
+
+    let draft
+    try {
+      draft = await runSkillAgent(query)
+    } catch (err) {
+      console.error('GENERATE FAILED')
+      console.error(err)
+      return req.error(500, err.message)
+    }
+
+    if (draft.error || !draft.skill) {
+      return JSON.stringify(draft)
+    }
+
+    return createSkill(req, draft.skill)
   })
 })
 
@@ -64,6 +84,22 @@ async function fetchCsrfToken(destination) {
     token: res.headers['x-csrf-token'],
     cookie: Array.isArray(setCookie) ? setCookie.map((c) => c.split(';')[0]).join('; ') : undefined,
   }
+}
+
+async function createSkill(req, skill) {
+  const destination = await resolveDestination(req)
+  const csrf = await fetchCsrfToken(destination)
+
+  return odata(req, {
+    method: 'POST',
+    url: `${SERVICE_PATH}/${ENTITY_SET}`,
+    data: skill,
+    headers: {
+      'X-CSRF-Token': csrf.token,
+      ...(csrf.cookie ? { Cookie: csrf.cookie } : {}),
+      'Content-Type': 'application/json',
+    },
+  }, destination)
 }
 
 async function odata(req, request, destination) {
