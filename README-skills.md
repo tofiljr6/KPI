@@ -55,14 +55,11 @@ Body:
 { "query": "chcę dostać dane adresowe partnera" }
 ```
 
-`srv/lib/skillAgent.js` — system prompt = senior SAP expert across all modules
-(SD, MM, FI/CO, HCM, PP, BP, …). Three steps:
+`srv/lib/skillAgent.js` — two focused LLM calls, no web search:
 
-1. **assess** – does the model already know the exact table + fields? If not, it
-   emits a web search query.
-2. **research** – keyless web search via `duck-duck-scrape` (biased to SAP) + the
-   top result's page text. No API key needed.
-3. **draft** – structured output: `SkillInput` + `reasoning` + `sources`.
+1. **findSapTable** – a dedicated SAP-data-model chat picks the ONE table, the key
+   field, candidate fields, a `confidence` and alternative tables (`tableChoice`).
+2. **draft** – turns that choice into the `SkillInput` payload + `reasoning`.
 
 `generateSkill` returns the draft. `generateAndCreateSkill` also POSTs it through
 `SkillRepositoryService` (returns the draft JSON with `error` set if generation failed).

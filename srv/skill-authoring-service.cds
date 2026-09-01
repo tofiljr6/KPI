@@ -6,17 +6,21 @@ using { kip.skills.SkillInput } from './skill-types';
  */
 service SkillAuthoringService @(path: '/skill-authoring') {
 
-  type SkillSource {
-    title : String;
-    url   : String;
+  type TableChoice {
+    table           : String;
+    keyField        : String;
+    candidateFields : many String;
+    confidence      : String;
+    alternatives    : many String;
+    notes           : String;
   }
 
   type GeneratedSkill {
-    query     : String;
-    skill     : SkillInput;
-    reasoning : String;
-    sources   : many SkillSource;
-    error     : String;
+    query       : String;
+    skill       : SkillInput;
+    reasoning   : String;
+    tableChoice : TableChoice;
+    error       : String;
   }
 
   /**
