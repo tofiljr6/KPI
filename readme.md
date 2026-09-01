@@ -17,6 +17,8 @@ It does two things:
 | `SkillRepositoryService` | `/skill-repository` | The **only** component that talks to SAP on-premise. Bridges to ABAP OData `ZXXXX_SKILL_SRV` via destination `SA1_300`. | [docs/skill-repository-service.md](docs/skill-repository-service.md) |
 | `SkillAuthoringService` | `/skill-authoring` | Natural language → skill definition (LLM). Never calls SAP directly; delegates persistence to `SkillRepositoryService`. | [docs/skill-authoring-service.md](docs/skill-authoring-service.md) |
 
+UI: a freestyle SAPUI5/Fiori app at `/skills/index.html` — [docs/ui.md](docs/ui.md).
+
 ```
 NL query ──▶ SkillAuthoringService ──(findSapTable ▶ draft)──▶ skill draft
                      │
@@ -36,12 +38,15 @@ srv/
     ├── abapSkills.js               ABAP OData calls (destination, CSRF)  — used only by the repository service
     ├── skillAgent.js               findSapTable → draft pipeline
     └── model.js                    ChatOpenAI config (env or VCAP_SERVICES)
+app/
+└── skills/                         SAPUI5/Fiori app  →  /skills/index.html
 scripts/
 ├── test-skill-agent.js            generator only, no SAP
 └── test-save-skill.js             generate + POST to SAP
 docs/
 ├── skill-repository-service.md
 ├── skill-authoring-service.md
+├── ui.md
 ├── local-development.md
 └── troubleshooting.md
 ```
