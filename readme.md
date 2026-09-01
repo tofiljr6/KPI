@@ -17,7 +17,8 @@ It does two things:
 | `SkillRepositoryService` | `/skill-repository` | The **only** component that talks to SAP on-premise. Bridges to ABAP OData `ZXXXX_SKILL_SRV` via destination `SA1_300`. | [docs/skill-repository-service.md](docs/skill-repository-service.md) |
 | `SkillAuthoringService` | `/skill-authoring` | Natural language → skill definition (LLM). Never calls SAP directly; delegates persistence to `SkillRepositoryService`. | [docs/skill-authoring-service.md](docs/skill-authoring-service.md) |
 
-UI: a freestyle SAPUI5/Fiori app at `/skills/index.html` — [docs/ui.md](docs/ui.md).
+UI: a freestyle SAPUI5/Fiori app at `/skills/index.html` — a **List Report** of all
+skills plus an **Object Page** to generate and save a new one. [docs/ui.md](docs/ui.md).
 
 ```
 NL query ──▶ SkillAuthoringService ──(findSapTable ▶ draft)──▶ skill draft

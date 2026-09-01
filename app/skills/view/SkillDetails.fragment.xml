@@ -1,0 +1,26 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:form="sap.ui.layout.form">
+    <Dialog
+        title="{detail>/SkillName}"
+        contentWidth="40rem"
+        draggable="true"
+        resizable="true">
+        <form:SimpleForm editable="false" layout="ColumnLayout" columnsM="1" columnsL="1" columnsXL="1">
+            <Label text="{i18n>fDescription}" />
+            <Text text="{detail>/SkillDescription}" />
+            <Label text="{i18n>fTrigger}" />
+            <Text text="{detail>/SkillTriggerText}" />
+            <Label text="{i18n>fTable}" />
+            <Text text="{detail>/QueryTable}" />
+            <Label text="{i18n>fFields}" />
+            <Text text="{detail>/QueryFields}" />
+            <Label text="{i18n>fWhere}" />
+            <Text text="{detail>/QueryWhere}" />
+        </form:SimpleForm>
+        <beginButton>
+            <Button text="{i18n>close}" press=".onCloseDetails" />
+        </beginButton>
+    </Dialog>
+</core:FragmentDefinition>
