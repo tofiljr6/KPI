@@ -139,29 +139,39 @@
                         <uxap:ObjectPageSection title="{i18n>draftGroup}">
                             <uxap:subSections>
                                 <uxap:ObjectPageSubSection>
-                                    <MessageStrip
-                                        visible="{create>/generated}"
-                                        type="Information"
-                                        showIcon="true"
-                                        text="{i18n>genOk}"
-                                        class="sapUiSmallMarginBottom" />
-                                    <form:SimpleForm
-                                        editable="true"
-                                        layout="ColumnLayout"
-                                        columnsM="1" columnsL="1" columnsXL="1">
-                                        <Label text="{i18n>fName}" />
-                                        <Input value="{create>/skill/SkillName}" />
-                                        <Label text="{i18n>fDescription}" />
-                                        <TextArea value="{create>/skill/SkillDescription}" rows="2" growing="true" width="100%" />
-                                        <Label text="{i18n>fTrigger}" />
-                                        <TextArea value="{create>/skill/SkillTriggerText}" rows="2" growing="true" width="100%" />
-                                        <Label text="{i18n>fTable}" />
-                                        <Input value="{create>/skill/QueryTable}" />
-                                        <Label text="{i18n>fFields}" />
-                                        <TextArea value="{create>/skill/QueryFields}" rows="2" growing="true" width="100%" />
-                                        <Label text="{i18n>fWhere}" />
-                                        <Input value="{create>/skill/QueryWhere}" />
-                                    </form:SimpleForm>
+                                    <VBox width="100%">
+                                        <HBox justifyContent="Center" width="100%">
+                                            <MessageStrip
+                                                visible="{create>/generated}"
+                                                type="Information"
+                                                showIcon="true"
+                                                text="{i18n>genOk}"
+                                                class="sapUiSmallMarginBottom sapUiTinyMarginTop" />
+                                        </HBox>
+                                        <form:SimpleForm
+                                            width="100%"
+                                            maxContainerCols="1"
+                                            editable="true"
+                                            layout="ResponsiveGridLayout"
+                                            labelSpanXL="3" labelSpanL="3" labelSpanM="3" labelSpanS="12"
+                                            adjustLabelSpan="false"
+                                            emptySpanXL="1" emptySpanL="1" emptySpanM="0"
+                                            columnsXL="1" columnsL="1" columnsM="1"
+                                            singleContainerFullSize="true">
+                                            <Label text="{i18n>fName}" />
+                                            <Input value="{create>/skill/SkillName}" />
+                                            <Label text="{i18n>fDescription}" />
+                                            <TextArea value="{create>/skill/SkillDescription}" rows="2" growing="true" width="100%" />
+                                            <Label text="{i18n>fTrigger}" />
+                                            <TextArea value="{create>/skill/SkillTriggerText}" rows="2" growing="true" width="100%" />
+                                            <Label text="{i18n>fTable}" />
+                                            <Input value="{create>/skill/QueryTable}" />
+                                            <Label text="{i18n>fFields}" />
+                                            <TextArea value="{create>/skill/QueryFields}" rows="2" growing="true" width="100%" />
+                                            <Label text="{i18n>fWhere}" />
+                                            <Input value="{create>/skill/QueryWhere}" />
+                                        </form:SimpleForm>
+                                    </VBox>
                                 </uxap:ObjectPageSubSection>
                             </uxap:subSections>
                         </uxap:ObjectPageSection>
@@ -169,7 +179,16 @@
                         <uxap:ObjectPageSection title="{i18n>analysisGroup}" visible="{create>/generated}">
                             <uxap:subSections>
                                 <uxap:ObjectPageSubSection>
-                                    <form:SimpleForm editable="false" layout="ColumnLayout" columnsM="1" columnsL="1" columnsXL="1">
+                                    <form:SimpleForm
+                                        width="100%"
+                                        maxContainerCols="1"
+                                        editable="false"
+                                        layout="ResponsiveGridLayout"
+                                        labelSpanXL="2" labelSpanL="2" labelSpanM="3" labelSpanS="12"
+                                        adjustLabelSpan="false"
+                                        emptySpanXL="0" emptySpanL="0" emptySpanM="0"
+                                        columnsXL="1" columnsL="1" columnsM="1"
+                                        singleContainerFullSize="true">
                                         <Label text="{i18n>aReasoning}" />
                                         <Text text="{create>/meta/reasoning}" />
                                         <Label text="{i18n>aTable}" />
