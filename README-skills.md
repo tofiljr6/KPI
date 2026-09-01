@@ -67,8 +67,10 @@ Requires `OPENAI_API_KEY` in `.env` (see `.env.example`).
 Local test without CAP:
 
 ```bash
-OPENAI_API_KEY=sk-... TAVILY_API_KEY=tvly-... node scripts/test-skill-agent.js "chcę dostać dane adresowe partnera"
+node --env-file=.env scripts/test-skill-agent.js "chcę dostać dane adresowe partnera"
 ```
+
+(`node` doesn't read `.env` on its own — `cds watch` does. `--env-file` needs Node 20.6+.)
 
 ## Run
 
