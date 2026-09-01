@@ -49,34 +49,41 @@ npm install
 - Destination `SA1_300` defined in the subaccount (Connectivity → Destinations).
 - App bound to the `destination` and `connectivity` service instances.
 
-### Locally (mac) – hybrid binding from the terminal
+### Locally in SAP Business Application Studio (BAS)
 
-BTP destinations are not visible locally, so bind the Cloud Foundry service
-instances into the `hybrid` profile.
+The `SA1_300` destination is on-premise (reached via a Cloud Connector). BAS runs a
+local connectivity proxy at `127.0.0.1:8887` that tunnels to it. The app must be
+pointed at that proxy through a **`.env` file** — without it every call fails with
+`ECONNRESET`.
 
-1. Log in to Cloud Foundry:
-
-   ```bash
-   cf login -a <cf-api-endpoint> -o <org> -s <space>
-   ```
-
-2. Make sure the `destination` and `connectivity` service instances exist
-   (list them with `cf services`). Create them if missing:
+1. Create `.env` from the template:
 
    ```bash
-   cf create-service destination lite kip-destination
-   cf create-service connectivity lite kip-connectivity
+   cp .env.example .env
    ```
 
-3. Bind both into the hybrid profile (writes `.cdsrc-private.json`, git-ignored):
+   Then either fill in the values, or generate them: right-click the project in BAS →
+   **Bind to Cloud Foundry Services** → pick the `connectivity` and `destination`
+   instances. That writes `VCAP_SERVICES` plus the `destinations` line with the
+   `127.0.0.1:8887` proxy into `.env`.
+
+   The `.env` must contain:
+
+   ```
+   VCAP_SERVICES={...connectivity + destination service keys...}
+   destinations=[{"name":"SA1_300","url":"http://SA1_300.dest","proxyConfiguration":{"host":"127.0.0.1","port":8887,"protocol":"http"}}]
+   ```
+
+2. Run plain `cds watch`:
 
    ```bash
-   cds bind -2 kip-destination
-   cds bind -2 kip-connectivity
+   npx cds watch
    ```
 
-4. Run with the hybrid profile:
+   **Do NOT** use `cds bind` / `cds watch --profile hybrid` — that forces the
+   `connectivityproxy.internal.cf...` route, which is not reachable from BAS and
+   resets the connection. `.env` + the BAS local proxy is the working path.
 
-   ```bash
-   cds watch --profile hybrid
-   ```
+A correct run logs `url: 'http://SA1_300.dest'` (not `proxyType: OnPremise`).
+
+`.env` is git-ignored — never commit the real service keys.
