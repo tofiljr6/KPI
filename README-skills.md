@@ -1,27 +1,25 @@
-# SkillsService – ABAP OData bridge
+# Skills – two CAP services
 
-Direct call to the ABAP OData service through destination **`SA1_300`**
+| Service | Path | Job |
+|---|---|---|
+| `SkillRepositoryService` | `/skill-repository` | **The only** service that talks to SAP on-premise. Bridges to the ABAP OData service `ZXXXX_SKILL_SRV` via destination `SA1_300`. |
+| `SkillAuthoringService`  | `/skill-authoring`  | Turns a natural-language request into a skill definition (LLM + web search). For persistence it calls `SkillRepositoryService`. |
+
+Shared payload shape: `srv/skill-types.cds` → `kip.skills.SkillInput`
+(`SkillName`, `SkillDescription`, `SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere`).
+
+---
+
+## SkillRepositoryService  (`/skill-repository`)
+
+Implementation: `srv/skill-repository-service.js` → `srv/lib/abapSkills.js`
 (`@sap-cloud-sdk/http-client` + `getDestination`).
 
-## Backend (OData V2, SAP Gateway)
-
-| Method | URL                                                     |
-|--------|---------------------------------------------------------|
-| GET    | `/sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet`            |
-| GET    | `/sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet('<id>')`    |
-| POST   | `/sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet`            |
-
-## CAP endpoints
-
-After `cds watch` (service under `/odata/v4/skills-service`):
-
-| Endpoint                          | What it does                                   |
-|----------------------------------|-----------------------------------------------|
-| `GET  /getSkills()`               | `GET SkillSet`                                |
-| `GET  /getSkill(id='...')`        | `GET SkillSet('<id>')`                        |
-| `POST /createSkill`               | `POST SkillSet` (+ CSRF token)                |
-| `POST /generateSkill`             | NL request → skill draft (LangGraph, no save) |
-| `POST /generateAndCreateSkill`    | `generateSkill` then `createSkill`            |
+| Endpoint                     | Backend call                         |
+|-----------------------------|--------------------------------------|
+| `GET  /getSkills()`          | `GET SkillSet`                       |
+| `GET  /getSkill(id='...')`   | `GET SkillSet('<id>')`               |
+| `POST /createSkill`          | `POST SkillSet` (+ `X-CSRF-Token`)   |
 
 `createSkill` body:
 
@@ -38,40 +36,48 @@ After `cds watch` (service under `/odata/v4/skills-service`):
 }
 ```
 
-The GET/POST-to-SkillSet endpoints return the raw backend payload as a string and log
-`DESTINATION` details plus the HTTP status. POST first fetches an `X-CSRF-Token`.
+Returns the raw backend payload as a string; logs `DESTINATION` details + HTTP status.
 
-### Skill generation (LangChain)
+---
 
-`generateSkill` / `generateAndCreateSkill` body:
+## SkillAuthoringService  (`/skill-authoring`)
+
+Implementation: `srv/skill-authoring-service.js` → `srv/lib/skillAgent.js`.
+
+| Endpoint                          | What it does                                             |
+|----------------------------------|---------------------------------------------------------|
+| `POST /generateSkill`             | NL request → skill draft (LLM). No persistence.         |
+| `POST /generateAndCreateSkill`    | `generateSkill`, then `SkillRepositoryService.createSkill` |
+
+Body:
 
 ```json
 { "query": "chcę dostać dane adresowe partnera" }
 ```
 
-`srv/lib/skillAgent.js`, system prompt = senior SAP expert across all modules
+`srv/lib/skillAgent.js` — system prompt = senior SAP expert across all modules
 (SD, MM, FI/CO, HCM, PP, BP, …). Three steps:
 
 1. **assess** – does the model already know the exact table + fields? If not, it
    emits a web search query.
 2. **research** – keyless web search via `duck-duck-scrape` (biased to SAP) + the
    top result's page text. No API key needed.
-3. **draft** – structured output: the `createSkill` payload (`SkillName`,
-   `SkillDescription`, `SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere`)
-   plus `reasoning` and `sources`.
+3. **draft** – structured output: `SkillInput` + `reasoning` + `sources`.
 
-`generateSkill` returns the draft only. `generateAndCreateSkill` also POSTs it to the
-ABAP service (returns the draft JSON with `error` set if generation failed).
+`generateSkill` returns the draft. `generateAndCreateSkill` also POSTs it through
+`SkillRepositoryService` (returns the draft JSON with `error` set if generation failed).
 
 Requires `OPENAI_API_KEY` in `.env` (see `.env.example`).
 
-Local test without CAP:
+Local test of just the generator (no CAP, no destination):
 
 ```bash
 node --env-file=.env scripts/test-skill-agent.js "chcę dostać dane adresowe partnera"
 ```
 
 (`node` doesn't read `.env` on its own — `cds watch` does. `--env-file` needs Node 20.6+.)
+
+---
 
 ## Run
 
@@ -80,7 +86,7 @@ npm install
 ```
 
 ### On BTP
-- Destination `SA1_300` defined in the subaccount (Connectivity → Destinations).
+- Destination `SA1_300` in the subaccount (Connectivity → Destinations).
 - App bound to the `destination` and `connectivity` service instances.
 
 ### Locally in SAP Business Application Studio (BAS)
