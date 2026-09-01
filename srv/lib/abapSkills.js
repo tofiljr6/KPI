@@ -19,7 +19,14 @@ async function resolveDestination() {
 
 async function call(request, dest) {
   const d = dest || (await resolveDestination())
-  const res = await executeHttpRequest(d, { params: { '$format': 'json' }, ...request })
+  const method = (request.method || 'GET').toUpperCase()
+  // $format is a SystemQueryOption – OData V2 only allows it on reads.
+  const params = method === 'GET' ? { '$format': 'json' } : undefined
+  const res = await executeHttpRequest(d, {
+    ...request,
+    ...(params ? { params } : {}),
+    headers: { Accept: 'application/json', ...(request.headers || {}) },
+  })
   console.log('ABAP status:', res.status)
   return typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
 }
