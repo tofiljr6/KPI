@@ -1,10 +1,8 @@
 /**
- * Local test of the skill-generation agent without CAP / destination.
- * Loads .env via Node's --env-file flag (Node 20.6+):
- *
+ * Test the generator only (no SAP call).
  *   node --env-file=.env scripts/test-skill-agent.js "chcę dostać dane adresowe partnera"
  *
- * .env needs OPENAI_API_KEY (and optionally OPENAI_MODEL, TAVILY_API_KEY).
+ * .env needs OPENAI_API_KEY (optionally OPENAI_MODEL).
  */
 import { runSkillAgent } from '../srv/lib/skillAgent.js'
 

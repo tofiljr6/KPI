@@ -69,10 +69,24 @@ Body:
 
 Requires `OPENAI_API_KEY` in `.env` (see `.env.example`).
 
-Local test of just the generator (no CAP, no destination):
+### Test scripts
+
+Generator only (no CAP, no SAP):
 
 ```bash
 node --env-file=.env scripts/test-skill-agent.js "chcę dostać dane adresowe partnera"
+```
+
+End-to-end (generate **and** save to SAP — run inside BAS):
+
+```bash
+node --env-file=.env scripts/test-save-skill.js "chcę dostać dane adresowe partnera"
+```
+
+Save a hand-written skill directly (skip generation):
+
+```bash
+node --env-file=.env scripts/test-save-skill.js --skill '{"SkillName":"GetBpName","SkillDescription":"BP name","SkillTriggerText":"Use this skill when the user asks for a business partner name","QueryTable":"BUT000","QueryFields":"PARTNER, NAME_ORG1, NAME_LAST, NAME_FIRST","QueryWhere":"PARTNER = '"'"'{partner}'"'"'"}'
 ```
 
 (`node` doesn't read `.env` on its own — `cds watch` does. `--env-file` needs Node 20.6+.)
