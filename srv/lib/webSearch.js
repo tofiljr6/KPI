@@ -1,24 +1,24 @@
-import { DuckDuckGoSearch } from '@langchain/community/tools/duckduckgo_search'
+import { search, SafeSearchType } from 'duck-duck-scrape'
 import { resilientFetch } from './model.js'
 
 const UA =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
 
-const ddg = new DuckDuckGoSearch({ maxResults: 5 })
-
 /**
- * Keyless web search via LangChain's DuckDuckGoSearch tool, biased towards SAP.
+ * Keyless web search via duck-duck-scrape, biased towards SAP.
  * Returns { results: [{ title, url, snippet }] } (empty on any failure).
  */
 export async function webSearch(query, { maxResults = 5 } = {}) {
   const q = /\bsap\b/i.test(query) ? query : `${query} SAP`
   try {
-    const raw = await ddg.invoke(q)
-    const items = Array.isArray(raw) ? raw : JSON.parse(raw)
+    const res = await search(q, { safeSearch: SafeSearchType.MODERATE })
+    if (res.noResults || !res.results) return { results: [] }
     return {
-      results: items
-        .slice(0, maxResults)
-        .map((i) => ({ title: i.title, url: i.link || i.url, snippet: i.snippet })),
+      results: res.results.slice(0, maxResults).map((r) => ({
+        title: r.title,
+        url: r.url,
+        snippet: stripTags(r.description),
+      })),
     }
   } catch (err) {
     console.error('webSearch error:', err.message)
