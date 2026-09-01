@@ -3,14 +3,17 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
-    "sap/ui/core/Fragment",
     "sap/m/MessageToast",
     "sap/m/MessageBox"
-], function (Controller, JSONModel, Filter, FilterOperator, Fragment, MessageToast, MessageBox) {
+], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, MessageBox) {
     "use strict";
 
     var AUTHORING = "/skill-authoring/";
     var REPOSITORY = "/skill-repository/";
+
+    var TWO_COLUMN = "TwoColumnsMidExpanded";
+    var FULL_SCREEN = "MidColumnFullScreen";
+    var ONE_COLUMN = "OneColumn";
 
     var EMPTY_SKILL = {
         SkillName: "", SkillDescription: "", SkillTriggerText: "",
@@ -20,7 +23,7 @@ sap.ui.define([
     return Controller.extend("kip.skillauthoring.controller.App", {
 
         onInit: function () {
-            this.getView().setModel(new JSONModel({ skills: [], busy: false }));
+            this.getView().setModel(new JSONModel({ skills: [], busy: false, layout: ONE_COLUMN }));
             this.getView().setModel(new JSONModel({
                 query: "", busy: false, generated: false,
                 skill: Object.assign({}, EMPTY_SKILL), meta: {}
@@ -30,8 +33,12 @@ sap.ui.define([
 
         // ---------- helpers ----------
 
-        _nav: function () {
-            return this.byId("app");
+        _fcl: function () {
+            return this.byId("fcl");
+        },
+
+        _setLayout: function (sLayout) {
+            this.getView().getModel().setProperty("/layout", sLayout);
         },
 
         _i18n: function (key, args) {
@@ -119,39 +126,37 @@ sap.ui.define([
         },
 
         onOpenDetails: function (oEvent) {
-            var ctx = oEvent.getSource().getBindingContext();
-            var data = ctx.getObject();
-            this.getView().setModel(new JSONModel(data), "detail");
+            // fires from the table's selectionChange (listItem param) or an item press
+            var oItem = oEvent.getParameter("listItem") || oEvent.getSource();
+            var oCtx = oItem.getBindingContext();
+            if (!oCtx) { return; }
 
-            if (!this._detailDialog) {
-                this._detailDialog = Fragment.load({
-                    id: this.getView().getId(),
-                    name: "kip.skillauthoring.view.SkillDetails",
-                    controller: this
-                }).then(function (dlg) {
-                    this.getView().addDependent(dlg);
-                    return dlg;
-                }.bind(this));
-            }
-            this._detailDialog.then(function (dlg) { dlg.open(); });
+            this.getView().setModel(new JSONModel(Object.assign({}, oCtx.getObject())), "detail");
+            this._fcl().to(this.byId("detailPage").getId());
+            this._setLayout(this.getView().getModel().getProperty("/layout") === FULL_SCREEN ? FULL_SCREEN : TWO_COLUMN);
         },
 
-        onCloseDetails: function () {
-            this._detailDialog.then(function (dlg) { dlg.close(); });
+        onToggleFullScreen: function () {
+            var sLayout = this.getView().getModel().getProperty("/layout");
+            this._setLayout(sLayout === FULL_SCREEN ? TWO_COLUMN : FULL_SCREEN);
         },
 
-        // ---------- create (object page) ----------
+        onCloseColumn: function () {
+            this._setLayout(ONE_COLUMN);
+            var oTable = this.byId("skillsTable");
+            if (oTable) { oTable.removeSelections(true); }
+        },
+
+        // ---------- create ----------
 
         onOpenCreate: function () {
             this.getView().getModel("create").setData({
                 query: "", busy: false, generated: false,
                 skill: Object.assign({}, EMPTY_SKILL), meta: {}
             });
-            this._nav().to(this.byId("createPage"));
-        },
-
-        onCloseCreate: function () {
-            this._nav().back();
+            this.byId("skillsTable").removeSelections(true);
+            this._fcl().to(this.byId("createPage").getId());
+            this._setLayout(TWO_COLUMN);
         },
 
         onGenerate: function () {
@@ -202,7 +207,7 @@ sap.ui.define([
                 .then(function () {
                     m.setProperty("/busy", false);
                     MessageToast.show(this._i18n("saveOk"));
-                    this._nav().back();
+                    this.onCloseColumn();
                     this._loadSkills();
                 }.bind(this))
                 .catch(function (err) {

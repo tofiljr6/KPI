@@ -28,7 +28,6 @@
       "libs": {
         "sap.m": {},
         "sap.f": {},
-        "sap.uxap": {},
         "sap.ui.layout": {},
         "sap.ui.core": {}
       }

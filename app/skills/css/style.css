@@ -9,17 +9,7 @@
 	font-size: 0.875rem;
 }
 
-/* Prompt area in the object-page header: lift it onto a card */
-.kipPromptBox {
-	max-width: 60rem;
-	padding: 1rem 1.25rem 1.25rem;
-	border: 1px solid var(--sapList_BorderColor, #d9d9d9);
-	border-radius: var(--sapElement_BorderCornerRadius, 0.75rem);
-	background: var(--sapList_Background, #fff);
-	box-shadow: var(--sapContent_Shadow0, 0 0 2px 0 rgba(34, 54, 73, 0.1));
-}
-
-/* Keep the object-page forms from stretching edge to edge on wide screens */
-.kipCreatePage .sapUxAPObjectPageSubSection .sapUiForm {
-	max-width: 60rem;
+/* Keep the create form comfortable to read in a wide mid-column */
+.kipCreateBox {
+	max-width: 44rem;
 }

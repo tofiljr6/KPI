@@ -1,42 +1,49 @@
 # UI – Skill Catalog (`app/skills`)
 
 A freestyle **SAPUI5 / Fiori** app (no other UI framework). UI5 1.120 from
-`https://ui5.sap.com`, theme `sap_horizon`, libs `sap.m`, `sap.f`, `sap.uxap`,
-`sap.ui.layout`.
+`https://ui5.sap.com`, theme `sap_horizon`, libs `sap.m`, `sap.f`,
+`sap.ui.layout`, `sap.ui.core`.
 
 Served by CAP static hosting at **`/skills/index.html`** (the folder is `app/skills`,
 deliberately **not** `app/skill-authoring` — that would shadow the OData service path).
 
 ## Screens
 
-One `sap.m.App` (NavContainer) with two pages.
+A `sap.f.ShellBar` on top of one `sap.f.FlexibleColumnLayout` (FCL). The FCL
+`layout` is bound to `/layout` in the JSON model and driven from the controller:
+`OneColumn` (list only) → `TwoColumnsMidExpanded` (list + mid) →
+`MidColumnFullScreen` (mid only). Every mid-column page has **Full screen** and
+**Close** buttons in its header bar.
 
-### 1. List Report — `listPage`
+### Begin column — list (`listPage`)
 
-- `sap.f.ShellBar` header ("Skill Catalog" / "KIP" + avatar)
-- `sap.m.Table` header toolbar: title + count badge, `SearchField` (filters by
-  name / table / description), refresh, and **Create New Skill** (emphasized)
 - `sap.m.Table` of all skills from `GET /skill-repository/getSkills()` — columns
   Skill, Table (as an `ObjectStatus`), Fields, Where; `autoPopinMode` collapses
-  the lower-priority columns on small screens; sticky column headers + toolbar
-- Row press → read-only details dialog (`view/SkillDetails.fragment.xml`)
+  the lower-priority columns when the column narrows; sticky headers + toolbar
+- Header toolbar: title + count badge, `SearchField` (filters by
+  name / table / description), refresh, and **Create New Skill** (emphasized)
+- `mode="SingleSelectMaster"` — selecting a row (`selectionChange`) opens its
+  preview in the mid column
 - Empty state: `IllustratedMessage` with a Create action
 
-### 2. Object Page — `createPage`
+### Mid column — preview (`detailPage`)
 
-`sap.uxap.ObjectPageLayout` (the Fiori Object Page floorplan):
+Read-only `SimpleForm` with the six skill fields (technical fields monospaced).
+The backend has no update operation, so this is preview only.
 
-- **Header title**: the skill name (or "New Skill") + a one-line hint
-- **Header content**: the natural-language prompt (on a card) + **Generate**
-- **Section "Skill definition"**: editable form — `SkillName`, `SkillDescription`,
-  `SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere`
-- **Section "Model analysis"** (shown after generate): `reasoning`, chosen table,
-  key field, `confidence` (colour-coded), alternatives, candidate fields
-- **Footer**: Cancel / Save
+### Mid column — create (`createPage`)
 
-Flow: type a prompt → **Generate** (`POST /skill-authoring/generateSkill`) → the form
-fills in → edit any field → **Save** (`POST /skill-repository/createSkill`) → back to
-the list, which refreshes. Nothing is persisted before Save.
+- Top: the natural-language prompt + **Generate** + a one-line hint
+- After generate: a success `MessageStrip`, the editable form (`SkillName`,
+  `SkillDescription`, `SkillTriggerText`, `QueryTable`, `QueryFields`,
+  `QueryWhere`; required markers on name/table), and a collapsed **Model
+  analysis** `Panel` (`reasoning`, chosen table, key field, colour-coded
+  `confidence`, alternatives, candidate fields)
+- Footer: Cancel / Save
+
+Flow: type a prompt → **Generate** (`POST /skill-authoring/generateSkill`) → the
+form appears → edit any field → **Save** (`POST /skill-repository/createSkill`) →
+the mid column closes and the list refreshes. Nothing is persisted before Save.
 
 ## Files
 
@@ -44,15 +51,14 @@ the list, which refreshes. Nothing is persisted before Save.
 app/skills/
 ├── index.html                      UI5 bootstrap (CDN) + loading splash
 ├── init.js  ·  Component.js  ·  manifest.json
-├── view/App.view.xml               list page + object page
-├── view/SkillDetails.fragment.xml  row details dialog
-├── controller/App.controller.js    fetch + CSRF + navigation
+├── view/App.view.xml               ShellBar + FlexibleColumnLayout (list / preview / create)
+├── controller/App.controller.js    fetch + CSRF + FCL layout handling
 ├── css/style.css                   small polish on top of sap_horizon
 └── i18n/i18n.properties
 ```
 
 `css/style.css` is registered via `sap.ui5/resources/css` in `manifest.json`
-(monospace for technical fields, a card around the prompt box, form max-width).
+(monospace for technical fields, create-form max-width).
 
 ## How it calls the backend
 
@@ -78,5 +84,5 @@ http://localhost:4004/skills/index.html
 
 ## Later
 
-A prompting screen (chat against the user's own skills) will be added as a third
-page in the same app.
+A prompting screen (chat against the user's own skills) could be added as an
+end column in the same FCL.
