@@ -9,7 +9,10 @@
 	font-size: 0.875rem;
 }
 
-/* Keep the create form comfortable to read in a wide mid-column */
+/* Keep the create form comfortable to read, and centre it in a wide mid-column */
 .kipCreateBox {
 	max-width: 44rem;
+	margin-inline: auto;
+	width: 100%;
+	box-sizing: border-box;
 }
