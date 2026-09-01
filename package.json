@@ -4,8 +4,10 @@
   "type": "module",
   "dependencies": {
     "@cap-js/hana": "^3",
+    "@langchain/community": "^0.3",
     "@langchain/core": "^0.3",
     "@langchain/openai": "^0.4",
+    "duck-duck-scrape": "^2.2",
     "@sap/cds": "^10",
     "@sap/xssec": "^4",
     "@sap-cloud-sdk/http-client": "^4",

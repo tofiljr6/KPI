@@ -54,8 +54,8 @@ The GET/POST-to-SkillSet endpoints return the raw backend payload as a string an
 
 1. **assess** – does the model already know the exact table + fields? If not, it
    emits a web search query.
-2. **research** – keyless web search (DuckDuckGo, biased to SAP) + the top result's
-   page text. No API key needed.
+2. **research** – LangChain's `DuckDuckGoSearch` tool (keyless, biased to SAP) +
+   the top result's page text. No API key needed.
 3. **draft** – structured output: the `createSkill` payload (`SkillName`,
    `SkillDescription`, `SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere`)
    plus `reasoning` and `sources`.

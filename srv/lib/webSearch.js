@@ -1,7 +1,30 @@
+import { DuckDuckGoSearch } from '@langchain/community/tools/duckduckgo_search'
 import { resilientFetch } from './model.js'
 
 const UA =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
+
+const ddg = new DuckDuckGoSearch({ maxResults: 5 })
+
+/**
+ * Keyless web search via LangChain's DuckDuckGoSearch tool, biased towards SAP.
+ * Returns { results: [{ title, url, snippet }] } (empty on any failure).
+ */
+export async function webSearch(query, { maxResults = 5 } = {}) {
+  const q = /\bsap\b/i.test(query) ? query : `${query} SAP`
+  try {
+    const raw = await ddg.invoke(q)
+    const items = Array.isArray(raw) ? raw : JSON.parse(raw)
+    return {
+      results: items
+        .slice(0, maxResults)
+        .map((i) => ({ title: i.title, url: i.link || i.url, snippet: i.snippet })),
+    }
+  } catch (err) {
+    console.error('webSearch error:', err.message)
+    return { results: [] }
+  }
+}
 
 function stripTags(s) {
   return String(s || '')
@@ -14,49 +37,6 @@ function stripTags(s) {
     .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-}
-
-function decodeDdgUrl(href) {
-  const m = href.match(/[?&]uddg=([^&]+)/)
-  if (m) return decodeURIComponent(m[1])
-  return href.startsWith('//') ? 'https:' + href : href
-}
-
-function parseDdg(html) {
-  const out = []
-  const linkRe = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
-  let m
-  while ((m = linkRe.exec(html))) {
-    out.push({ url: decodeDdgUrl(m[1]), title: stripTags(m[2]), snippet: '' })
-  }
-  const snips = [...html.matchAll(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g)].map((s) =>
-    stripTags(s[1])
-  )
-  out.forEach((r, i) => {
-    r.snippet = snips[i] || ''
-  })
-  return out
-}
-
-/**
- * Keyless web search via DuckDuckGo's HTML endpoint, biased towards SAP content.
- * Returns { results: [{ title, url, snippet }] } (empty on any failure).
- */
-export async function webSearch(query, { maxResults = 5 } = {}) {
-  const q = /\bsap\b/i.test(query) ? query : `${query} SAP`
-  try {
-    const res = await resilientFetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q), {
-      headers: { 'User-Agent': UA, Accept: 'text/html' },
-    })
-    if (!res.ok) {
-      console.error('webSearch: DuckDuckGo returned', res.status)
-      return { results: [] }
-    }
-    return { results: parseDdg(await res.text()).slice(0, maxResults) }
-  } catch (err) {
-    console.error('webSearch error:', err.message)
-    return { results: [] }
-  }
 }
 
 /** Fetch a result page and return its readable text, capped. */
