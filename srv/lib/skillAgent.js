@@ -1,66 +1,39 @@
-import { AgentExecutor, createToolCallingAgent } from 'langchain/agents'
-import { ChatPromptTemplate } from '@langchain/core/prompts'
 import { z } from 'zod'
 import { model } from './model.js'
-import { searchWebTool } from './searchTool.js'
 
-const tools = [searchWebTool]
-
-const prompt = ChatPromptTemplate.fromMessages([
-  [
-    'system',
-    [
-      'You build SAP ABAP data-extraction skills.',
-      'The user describes what data they want (e.g. "address data of a business partner").',
-      '',
-      'Your job:',
-      '1. Use the `search_web` tool to research the relevant SAP standard table(s) and their',
-      '   technical field names. For business partner data, investigate the SAP Business Partner',
-      '   data model (tables such as BUT000, BUT020, BUT021_FS, BUT0ID, ADRC, ADR2, ADR6, ...).',
-      '   Run more than one search if needed to confirm table and field names.',
-      '2. Decide on ONE transparent table that best serves the request.',
-      '3. Produce the skill definition.',
-      '',
-      'The skill is executed as a single OpenSQL SELECT on that ONE table, so:',
-      '- QueryTable: exactly one SAP standard table, technical name, UPPERCASE.',
-      '- QueryFields: comma-separated technical field names that exist on that table.',
-      "- QueryWhere: a WHERE clause using {{placeholder}} tokens for runtime values,",
-      "  e.g. \"PARTNER = '{{partner}}'\".",
-      '- Never invent field names.',
-      '',
-      'When done, reply with ONLY a JSON object, no prose, no code fences:',
-      '{{"SkillName":"PascalCaseNoSpaces","SkillDescription":"one sentence",',
-      '"SkillTriggerText":"Use this skill when the user asks for ...",',
-      '"QueryTable":"TABLE","QueryFields":"F1, F2, F3","QueryWhere":"F1 = \'{{token}}\'",',
-      '"reasoning":"1-2 sentences on the table/field choice"}}',
-    ].join('\n'),
-  ],
-  ['human', '{input}'],
-  ['placeholder', '{agent_scratchpad}'],
-])
+const EXPERT_SYSTEM = [
+  'You are a senior SAP expert for the Business Partner (BP) / Business Data Toolset (BDT) module.',
+  'You know the SAP BP data model in depth. Reference tables (non-exhaustive):',
+  '- BUT000  : BP general data (PARTNER, TYPE, BU_GROUP, NAME_ORG1/2, NAME_FIRST, NAME_LAST, ...)',
+  '- BUT020  : BP address usages – links PARTNER to ADDRNUMBER (PARTNER, ADDRNUMBER, XDFADR, ...)',
+  '- BUT021_FS: BP address usage / validity (PARTNER, ADDRNUMBER, ADR_KIND, DATE_FROM, DATE_TO)',
+  '- ADRC    : central address data (ADDRNUMBER, NAME1, CITY1, POST_CODE1, STREET, HOUSE_NUM1, COUNTRY, REGION, ...)',
+  '- ADR2 / ADR3 : phone / fax numbers (ADDRNUMBER, TEL_NUMBER, ...)',
+  '- ADR6    : e-mail addresses (ADDRNUMBER, SMTP_ADDR, ...)',
+  '- BUT0ID  : BP identification numbers (PARTNER, TYPE, IDNUMBER, VALID_DATE_FROM, VALID_DATE_TO)',
+  '- BUT0BK  : BP bank details (PARTNER, BANKS, BANKL, BANKN, ...)',
+  '- BUT100  : BP roles (PARTNER, RLTYP, ...)',
+  '',
+  'Rules for the skill you produce:',
+  '- The skill runs as a SINGLE OpenSQL SELECT on exactly ONE transparent table.',
+  '- QueryTable MUST be a table from the SAP Business Partner domain (BUT*, ADRC, ADR2/3/6). Nothing else.',
+  '- Never use invented or non-SAP table/field names.',
+  '- QueryFields: comma-separated real technical field names of that table.',
+  "- QueryWhere: a WHERE clause using {placeholder} tokens for runtime values, e.g. \"PARTNER = '{partner}'\".",
+  '- If the request needs data behind an address number (address, phone, e-mail) and the caller',
+  "  has a partner number, prefer BUT020 (PARTNER -> ADDRNUMBER); if the request clearly wants the",
+  '  concrete address fields, use ADRC keyed by ADDRNUMBER.',
+].join('\n')
 
 const skillSchema = z.object({
-  SkillName: z.string(),
-  SkillDescription: z.string(),
-  SkillTriggerText: z.string(),
-  QueryTable: z.string(),
-  QueryFields: z.string(),
-  QueryWhere: z.string(),
-  reasoning: z.string(),
+  SkillName: z.string().describe('PascalCase, no spaces, e.g. GetBusinessPartnerAddress'),
+  SkillDescription: z.string().describe('One sentence: what data this skill returns'),
+  SkillTriggerText: z.string().describe('Starts with "Use this skill when the user asks for ..."'),
+  QueryTable: z.string().describe('ONE SAP Business Partner table, UPPERCASE (BUT000/BUT020/ADRC/ADR6/BUT0ID/...)'),
+  QueryFields: z.string().describe('Comma-separated real technical field names of that table'),
+  QueryWhere: z.string().describe("WHERE clause with {placeholder} tokens, e.g. \"PARTNER = '{partner}'\""),
+  reasoning: z.string().describe('1-2 sentences on the table/field choice'),
 })
-
-function tryParseJson(text) {
-  if (!text) return null
-  const cleaned = String(text).replace(/```json/gi, '').replace(/```/g, '').trim()
-  const start = cleaned.indexOf('{')
-  const end = cleaned.lastIndexOf('}')
-  if (start === -1 || end === -1) return null
-  try {
-    return JSON.parse(cleaned.slice(start, end + 1))
-  } catch {
-    return null
-  }
-}
 
 function normalize(skill) {
   return {
@@ -78,46 +51,21 @@ function normalize(skill) {
 }
 
 /**
- * LangChain tool-calling agent. Researches the SAP data model with `search_web`,
- * then returns the skill in SkillsService.createSkill shape.
+ * Natural-language data request -> skill definition in SkillsService.createSkill shape.
+ * Single LangChain structured-output call with the SAP BP expert system prompt.
  */
 export async function runSkillAgent(query) {
-  const llm = model()
+  const draft = await model().withStructuredOutput(skillSchema).invoke([
+    { role: 'system', content: EXPERT_SYSTEM },
+    { role: 'user', content: `Data request: ${query}` },
+  ])
 
-  const agent = createToolCallingAgent({ llm, tools, prompt })
-  const executor = new AgentExecutor({ agent, tools, maxIterations: 6, returnIntermediateSteps: true })
-
-  const run = await executor.invoke({ input: query })
-
-  const sources = []
-  for (const step of run.intermediateSteps || []) {
-    const action = step?.action ?? step?.[0]
-    const observation = step?.observation ?? step?.[1]
-    if (action?.tool !== 'search_web') continue
-    try {
-      for (const r of JSON.parse(observation).results || []) {
-        sources.push({ title: r.title, url: r.url })
-      }
-    } catch { /* ignore */ }
-  }
-
-  let parsed = tryParseJson(run.output)
-
-  // Fallback: coerce whatever the agent said into the schema with one more call.
-  if (!parsed || !parsed.QueryTable) {
-    const coerce = model().withStructuredOutput(skillSchema)
-    parsed = await coerce.invoke([
-      { role: 'system', content: 'Extract the skill definition as structured data.' },
-      { role: 'user', content: run.output || query },
-    ])
-  }
-
-  const reasoning = parsed.reasoning || null
-  const skill = normalize(parsed)
+  const reasoning = draft.reasoning || null
+  const skill = normalize(draft)
 
   if (!skill.SkillName || !skill.QueryTable) {
-    return { query, skill: null, reasoning, sources, error: 'Agent did not produce a usable skill.' }
+    return { query, skill: null, reasoning, error: 'Could not produce a usable skill.' }
   }
 
-  return { query, skill, reasoning, sources, error: null }
+  return { query, skill, reasoning, error: null }
 }

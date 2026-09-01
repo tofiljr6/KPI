@@ -6,7 +6,6 @@
     "@cap-js/hana": "^3",
     "@langchain/core": "^0.3",
     "@langchain/openai": "^0.4",
-    "langchain": "^0.3",
     "@sap/cds": "^10",
     "@sap/xssec": "^4",
     "@sap-cloud-sdk/http-client": "^4",

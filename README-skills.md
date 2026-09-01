@@ -41,7 +41,7 @@ After `cds watch` (service under `/odata/v4/skills-service`):
 The GET/POST-to-SkillSet endpoints return the raw backend payload as a string and log
 `DESTINATION` details plus the HTTP status. POST first fetches an `X-CSRF-Token`.
 
-### Skill generation (LangChain agent)
+### Skill generation (LangChain)
 
 `generateSkill` / `generateAndCreateSkill` body:
 
@@ -49,15 +49,11 @@ The GET/POST-to-SkillSet endpoints return the raw backend payload as a string an
 { "query": "chcę dostać dane adresowe partnera" }
 ```
 
-A LangChain tool-calling agent (`srv/lib/skillAgent.js`) with one tool, `search_web`
-(`srv/lib/searchTool.js` → Tavily). The agent is instructed to research the SAP
-Business Partner data model (BUT000, BUT020, BUT0ID, ADRC, ADR6, …), pick ONE
-transparent table, and return the `createSkill` payload: `SkillName`,
-`SkillDescription`, `SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere`
-plus `reasoning` and `sources`.
-
-Without `TAVILY_API_KEY` the tool returns nothing and the agent falls back to its
-own SAP knowledge.
+A single LangChain structured-output call (`srv/lib/skillAgent.js`) with a system
+prompt that makes the model act as an SAP Business Partner expert. It must pick ONE
+BP-domain table (BUT000, BUT020, BUT021_FS, ADRC, ADR2/3/6, BUT0ID, BUT0BK, BUT100)
+and return the `createSkill` payload: `SkillName`, `SkillDescription`,
+`SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere` plus `reasoning`.
 
 `generateSkill` returns the draft only. `generateAndCreateSkill` also POSTs it to the
 ABAP service (returns the draft JSON with `error` set if generation failed).

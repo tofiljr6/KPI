@@ -19,16 +19,10 @@ service SkillsService {
     QueryWhere       : String;
   }
 
-  type SkillSource {
-    title : String;
-    url   : String;
-  }
-
   type SkillDraft {
     query     : String;
     skill     : SkillInput;
     reasoning : String;
-    sources   : many SkillSource;
     error     : String;
   }
 
@@ -42,7 +36,7 @@ service SkillsService {
   action createSkill(skill : SkillInput) returns String;
 
   /**
-   * Natural-language -> skill definition (LangChain agent + web search).
+   * Natural-language -> skill definition (LangChain, SAP BP expert prompt).
    * Does NOT persist anything. Example query: "chcę dostać dane adresowe partnera".
    */
   action generateSkill(query : String) returns SkillDraft;
