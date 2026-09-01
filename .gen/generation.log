@@ -1,0 +1,32 @@
+Starting CAP Project Generator...
+Using @sap/cds-dk [10.0.7] from /home/user/.node_modules_global/lib/node_modules/@sap/cds-dk
+Using @sap/generator-cap-project [2.0.6] from [/extbin/globals/bun/global/install/node_modules/@sap/generator-cap-project]
+Using root path [/home/user/projects]
+
+Running in Lobby mode: {"projectName":"KIP","facets":["nodejs","hana","xsuaa"],"id":"eu10.ai-dev-automation-wkn27pic.kip"}
+
+
+Creating project with hana, nodejs, xsuaa
+
+Adding facet: nodejs
+Adding facet: xsuaa
+Adding facet: hana
+
+Successfully initialized CAP project
+Continue with: code KIP 
+
+
+Installing dependencies...
+
+added 81 packages, and audited 82 packages in 3s
+
+30 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+Finished installing dependencies
+
+Done setting up project KIP
+Project is ready to use
+
