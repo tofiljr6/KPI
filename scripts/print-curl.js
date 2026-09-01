@@ -13,24 +13,25 @@ const authHeader = destination.username && destination.password
   : null
 
 const proxy = destination.proxyConfiguration
-const proxyAuthHeader = proxy?.headers?.['Proxy-Authorization']
 
 console.log('DESTINATION:', {
   name: destination.name,
   url: destination.url,
   proxyType: destination.proxyType,
   authentication: destination.authentication,
-  proxy: proxy ? { host: proxy.host, port: proxy.port } : null,
+  proxy: proxy ? { host: proxy.host, port: proxy.port, headers: Object.keys(proxy.headers || {}) } : null,
 })
 
 function printCurl(label, path) {
   const url = `${destination.url}${path}`
-  const parts = ['curl -v -sS']
+  const parts = ["curl -v -sS -H 'Connection: Keep-Alive'"]
   if (proxy) parts.push(`-x http://${proxy.host}:${proxy.port}`)
-  if (proxyAuthHeader) parts.push(`-H "Proxy-Authorization: ${proxyAuthHeader}"`)
-  if (authHeader) parts.push(`-H "Authorization: ${authHeader}"`)
-  parts.push('-H "sap-client: 300"')
-  parts.push(`"${url}"`)
+  for (const [key, value] of Object.entries(proxy?.headers || {})) {
+    parts.push(`-H '${key}: ${value}'`)
+  }
+  if (authHeader) parts.push(`-H 'Authorization: ${authHeader}'`)
+  parts.push("-H 'sap-client: 300'")
+  parts.push(`'${url}'`)
 
   console.log(`\n# ${label}`)
   console.log(parts.join(' \\\n  '))
