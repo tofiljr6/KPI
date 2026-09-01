@@ -24,15 +24,47 @@ npm install
 - Destination `SA1_300` defined in the subaccount (Connectivity → Destinations).
 - App bound to the `destination` and `connectivity` service instances.
 
-### Locally (mac)
-BTP destinations are not visible locally – borrow the services from Cloud Foundry:
+### Locally (mac) – hybrid binding from the terminal
 
-```bash
-cds bind --to <app>-destination --to <app>-connectivity
-cds watch --profile hybrid
-```
+BTP destinations are not visible locally, so bind the Cloud Foundry service
+instances into the `hybrid` profile.
 
-or define the destination locally in `.env` (do not commit):
+1. Log in to Cloud Foundry:
+
+   ```bash
+   cf login -a <cf-api-endpoint> -o <org> -s <space>
+   ```
+
+2. Make sure the `destination` and `connectivity` service instances exist
+   (list them with `cf services`). Create them if missing:
+
+   ```bash
+   cf create-service destination lite kip-destination
+   cf create-service connectivity lite kip-connectivity
+   ```
+
+3. Bind both into the hybrid profile (writes `.cdsrc-private.json`, git-ignored):
+
+   ```bash
+   cds bind -2 kip-destination
+   cds bind -2 kip-connectivity
+   ```
+
+   Check the result with `cds bind --resolve --profile hybrid`.
+
+4. Run with the hybrid profile so the SDK routes through the bound services:
+
+   ```bash
+   cds watch --profile hybrid
+   ```
+
+   If the connectivity proxy is not picked up, start via:
+
+   ```bash
+   cds bind --exec -- cds watch --profile hybrid
+   ```
+
+Alternatively, skip CF and define the destination locally in `.env` (do not commit):
 
 ```
 destinations=[{"name":"SA1_300","url":"https://<host>","username":"<user>","password":"<pass>"}]
