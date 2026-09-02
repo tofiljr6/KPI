@@ -13,6 +13,12 @@ import { parseSkillMarkdown, validateSkillDoc } from './lib/skillMarkdown.js'
 
 const status = (err) => err?.response?.status || 500
 
+/** The backend's own error text, when the OData service sent one. */
+const backendMessage = (err) => {
+  const m = err?.response?.data?.error?.message
+  return (typeof m === 'object' ? m?.value : m) || err?.message || 'Unknown error'
+}
+
 /** Stored record -> the same record with SkillDescription parsed back into a SkillDoc. */
 function toStoredSkill(record, match) {
   const markdown = record?.SkillDescription || ''
@@ -72,7 +78,7 @@ export default cds.service.impl(function () {
       return await listSkills()
     } catch (err) {
       console.error('getSkills failed', err?.response?.data ?? err)
-      return req.error(status(err), err.message)
+      return req.error(status(err), backendMessage(err))
     }
   })
 
@@ -83,7 +89,7 @@ export default cds.service.impl(function () {
       return await readSkill(id)
     } catch (err) {
       console.error('getSkill failed', err?.response?.data ?? err)
-      return req.error(status(err), err.message)
+      return req.error(status(err), backendMessage(err))
     }
   })
 
@@ -91,12 +97,19 @@ export default cds.service.impl(function () {
     const { id } = req.data
     if (!id) return req.error(400, 'Missing "id" parameter')
     try {
-      const [record] = unwrap(await readSkill(id))
+      // The SkillSet key is a GUID (SkillId), so SkillSet('<name>') is a 400. Resolve
+      // the id – a name or the GUID – against the feed instead.
+      const wanted = String(id).trim().toLowerCase()
+      const record = (await listSkillRecords()).find(
+        (r) =>
+          String(r?.SkillId || '').toLowerCase() === wanted ||
+          String(r?.SkillName || '').toLowerCase() === wanted
+      )
       if (!record) return req.error(404, `Skill "${id}" not found`)
       return toStoredSkill(record)
     } catch (err) {
       console.error('getSkillDoc failed', err?.response?.data ?? err)
-      return req.error(status(err), err.message)
+      return req.error(status(err), backendMessage(err))
     }
   })
 
@@ -105,7 +118,7 @@ export default cds.service.impl(function () {
       return unwrap(await listSkills()).map(toStoredSkill)
     } catch (err) {
       console.error('getSkillDocs failed', err?.response?.data ?? err)
-      return req.error(status(err), err.message)
+      return req.error(status(err), backendMessage(err))
     }
   })
 
@@ -117,7 +130,7 @@ export default cds.service.impl(function () {
       return rankRecords(records, query).map((hit) => toStoredSkill(hit.record, hit.match))
     } catch (err) {
       console.error('findSkills failed', err?.response?.data ?? err)
-      return req.error(status(err), err.message)
+      return req.error(status(err), backendMessage(err))
     }
   })
 
@@ -131,7 +144,7 @@ export default cds.service.impl(function () {
       return await updateSkill(record, skill)
     } catch (err) {
       console.error('updateSkill failed', err?.response?.data ?? err)
-      return req.error(status(err), err.message)
+      return req.error(status(err), backendMessage(err))
     }
   })
 
@@ -144,7 +157,7 @@ export default cds.service.impl(function () {
       return await deleteSkill(record)
     } catch (err) {
       console.error('deleteSkill failed', err?.response?.data ?? err)
-      return req.error(status(err), err.message)
+      return req.error(status(err), backendMessage(err))
     }
   })
 
@@ -155,7 +168,7 @@ export default cds.service.impl(function () {
       return await createSkill(skill)
     } catch (err) {
       console.error('createSkill failed', err?.response?.data ?? err)
-      return req.error(status(err), err.message)
+      return req.error(status(err), backendMessage(err))
     }
   })
 
@@ -167,7 +180,7 @@ export default cds.service.impl(function () {
       return await runQuery({ TableName, Fields, WhereClause, MaxRows })
     } catch (err) {
       console.error('runQuery failed', err?.response?.data ?? err)
-      return req.error(status(err), err.message)
+      return req.error(status(err), backendMessage(err))
     }
   })
 })
