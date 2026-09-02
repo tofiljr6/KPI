@@ -32,7 +32,7 @@
         <VBox id="hero" class="kipHero" alignItems="Center" visible="{= ${/messages}.length === 0 }">
           <core:Icon src="sap-icon://ai" class="kipHeroIcon"/>
           <Title text="Let's build a skill" level="H2" class="kipHeroTitle"/>
-          <Text text="Describe the SAP data you need. Commands draft, change and find skills — nothing reaches SAP until you click Save or Delete." class="kipHeroText"/>
+          <Text text="Ask for SAP data and I will tell you which stored skill answers it — and say so when none does. Commands draft, change and delete skills; nothing reaches SAP until you click Save or Delete." class="kipHeroText"/>
           <VBox id="heroCommands" class="kipHeroCommands" width="100%"/>
         </VBox>
 

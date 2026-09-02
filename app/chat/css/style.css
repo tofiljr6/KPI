@@ -268,3 +268,7 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
 
 .kipSave .sapMBtnInner { border-radius: 10px; }
 .kipDelete .sapMBtnInner { border-radius: 10px; }
+
+/* A routed skill is shown read-only – it is an answer, not a draft. */
+.kipDoc--route.sapMPanel { border-color: var(--kip-accent); }
+.kipDoc--route .kipDocBar.sapMTB { background: var(--kip-accent-soft); border-bottom-color: #e8cfc4; }

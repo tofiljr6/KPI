@@ -20,7 +20,7 @@ enforced on the server too: `chat` never writes, only `saveSkill` and `confirmDe
 | `/update-skill <name or text>` | opens a stored skill for editing |
 | `/delete-skill <name or text>` | shows the skill with a **Delete skill** button |
 | plain message, document open | a revision instruction — the document is rewritten |
-| plain message, nothing open | a short reply explaining that only commands act |
+| plain message, nothing open | a data request — [routed](skill-routing.md) to the stored skill that answers it |
 | `/help` | lists the commands |
 
 The commands are discoverable in three places: the empty-state tiles, a `/create-skill`
@@ -62,6 +62,17 @@ version is raised above the stored one if it is not already higher.
 hit) produces a confirmation card with a red border and a **Delete skill** button;
 several matches produce a list of candidates to click, which re-issues the command with
 the chosen name. The command alone never deletes anything.
+
+### Answering a question
+
+A plain message with no draft open goes to [`SkillRoutingService`](skill-routing.md): every
+stored skill becomes a tool and the model must call exactly one of them, or the explicit
+`no_matching_skill`. The reply names the skill and the parameter values it found, and shows
+the document **read-only** — it is an answer, not a draft, so it carries no buttons and does
+not become the chat's editing context.
+
+When nothing fits, the answer is "I do not know how to do that" plus what was missing. The
+model cannot fall back on its own SAP knowledge.
 
 ### Safety rails
 

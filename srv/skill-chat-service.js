@@ -109,6 +109,7 @@ export default cds.service.impl(function () {
 
   const authoring = () => cds.connect.to('SkillAuthoringService')
   const repository = () => cds.connect.to('SkillRepositoryService')
+  const routing = () => cds.connect.to('SkillRoutingService')
 
   this.on('commands', () => COMMANDS)
 
@@ -120,18 +121,10 @@ export default cds.service.impl(function () {
 
     if (!command) {
       if (!rest) return req.error(400, 'Missing "message"')
-      // A document open in this chat turns plain messages into revision instructions.
-      if (context.markdown) return reviseDraft(rest, context)
-      return reply(
-        'text',
-        [
-          'I only act on commands — or on a skill that is open in this chat.',
-          '',
-          `To draft one, type \`${COMMANDS[0].name} ${COMMANDS[0].args}\`, for example:`,
-          '',
-          `\`${COMMANDS[0].example}\``,
-        ].join('\n')
-      )
+      // A document open for editing turns plain messages into revision instructions;
+      // otherwise the question goes to the router, which answers out of the repository.
+      const editing = context.markdown && (context.mode === 'create' || context.mode === 'update')
+      return editing ? reviseDraft(rest, context) : routeQuestion(rest)
     }
 
     if (command === '/help') return reply('text', helpText(), { command })
@@ -144,6 +137,70 @@ export default cds.service.impl(function () {
       error: `Unknown command ${command}`,
     })
   })
+
+  /**
+   * A question with no document open: hand it to the router, which may only answer
+   * out of the stored skills. It never runs the skill – picking one is the answer.
+   */
+  async function routeQuestion(question) {
+    let route
+    try {
+      route = await (await routing()).send('route', { question })
+    } catch (err) {
+      console.error('chat: routing failed', err)
+      return reply('error', `Could not work out which skill to use.\n\n${asCode(err.message)}`, {
+        error: err.message,
+      })
+    }
+
+    const checked = route.considered
+      ? `_Checked ${route.considered} stored skill${route.considered === 1 ? '' : 's'}._`
+      : ''
+
+    if (!route.matched) {
+      return reply(
+        'route',
+        [
+          `I do not know how to do that. ${route.reason}`,
+          '',
+          `I can only answer with skills that are stored in SAP — if this one should exist,` +
+            ` create it with \`${COMMANDS[0].name} <description>\`.`,
+          '',
+          checked,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        { mode: 'route' }
+      )
+    }
+
+    const given = route.parameters.map((p) => `\`{${p.name}}\` = \`${p.value}\``).join(', ')
+    const missing = route.missing.map((p) => `\`{${p}}\``).join(', ')
+
+    return reply(
+      'route',
+      [
+        `Use the skill **${route.skillName}** for this.`,
+        '',
+        given ? `From your request: ${given}` : 'Your request supplies no parameter values yet.',
+        missing ? `Still needed: ${missing}` : '',
+        '',
+        '_Picking the skill is all I do for now — running its query comes later._',
+        '',
+        checked,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      {
+        // 'route' keeps the document read-only: this is not a draft to edit or save.
+        mode: 'route',
+        target: route.skillName,
+        markdown: route.skill ? renderSkillMarkdown(route.skill) : null,
+        skill: route.skill,
+        parameters: route.parameters.map((p) => p.name),
+      }
+    )
+  }
 
   /** /create-skill – an existing name opens that skill instead of drafting a duplicate. */
   async function createSkill(description, command) {

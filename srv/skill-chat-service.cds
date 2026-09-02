@@ -7,6 +7,9 @@ using { kip.skills.SkillDoc } from './skill-types';
  * deleting happen exclusively through `saveSkill` / `confirmDelete`, which the UI calls
  * when the user clicks the button on the card.
  *
+ * A plain message with no draft open is a data request: it goes to SkillRoutingService,
+ * which answers only out of the stored skills.
+ *
  * Never talks to SAP or the LLM directly: it delegates to SkillAuthoringService
  * (generate) and SkillRepositoryService (find / persist / delete).
  */
@@ -35,13 +38,13 @@ service SkillChatService @(path: '/skill-chat') {
   type ChatContext {
     markdown      : String;
     name          : String;
-    mode          : String;   // 'create' | 'update'
+    mode          : String;   // 'create' | 'update' | 'delete' | 'route' | ''   // 'create' | 'update'
     storedVersion : String;   // version currently in SAP, empty for a new skill
   }
 
   type ChatReply {
     role          : String;   // always 'assistant'
-    kind          : String;   // 'text' | 'skill' | 'delete' | 'choice' | 'error'
+    kind          : String;   // 'text' | 'skill' | 'route' | 'delete' | 'choice' | 'error'
     /** Markdown shown in the assistant bubble. */
     text          : String;
     /** The recognised slash command, or '' for plain chat. */
@@ -53,7 +56,7 @@ service SkillChatService @(path: '/skill-chat') {
     skill         : SkillDoc;
     parameters    : many String;
     /** Carried back into the next turn's ChatContext. */
-    mode          : String;
+    mode          : String;   // 'create' | 'update' | 'delete' | 'route' | ''
     target        : String;
     storedVersion : String;
     /** Set for kind = 'choice'. */
