@@ -1,5 +1,6 @@
 import { executeHttpRequest } from '@sap-cloud-sdk/http-client'
 import { resolveDestination, fetchCsrf, SERVICE_PATH } from './abapSkills.js'
+import { FIELD_SEPARATOR } from './skillExecutor.js'
 
 /**
  * The QuerySet entity of ZXXXX_SKILL_SRV runs one single-table SELECT and returns the
@@ -7,16 +8,13 @@ import { resolveDestination, fetchCsrf, SERVICE_PATH } from './abapSkills.js'
  * OData query options.
  *
  *   POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet
- *   { "TableNmae": "BUT000", "Fields": "PARTNER,TYPE,BU_GROUP",
+ *   { "TableNmae": "BUT000", "Fields": "PARTNER, TYPE, BU_GROUP",
  *     "WhereClause": "PARTNER = '0000000005'", "MaxRows": 10 }
  *
  * `TableNmae` is the backend's spelling of the property, not a typo here.
  * `MaxRows` is optional – the backend caps at 100 when it is left out.
  */
 const ENTITY_SET = 'QuerySet'
-
-/** How the field list is joined in `Fields`. The backend splits on this. */
-const FIELD_SEPARATOR = ','
 
 /** Builds the exact request body posted to QuerySet (also used for logging). */
 export function queryRequestBody({ TableName, Fields, WhereClause, MaxRows } = {}) {

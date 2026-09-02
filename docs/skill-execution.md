@@ -24,7 +24,7 @@ entity that runs one single-table `SELECT` described by the request body:
 POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet
 {
   "TableNmae": "BUT000",
-  "Fields": "PARTNER,TYPE,BU_GROUP",
+  "Fields": "PARTNER, TYPE, BU_GROUP",
   "WhereClause": "PARTNER = '0000000005'",
   "MaxRows": 10
 }
@@ -36,7 +36,7 @@ POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet
 | Field | Meaning |
 |---|---|
 | `TableNmae` | the SAP table to read |
-| `Fields` | **comma-separated** field list (no `JOIN`, one table) |
+| `Fields` | field list separated by `, ` — the space is required (`PARTNER, IDNUMBER`, never `PARTNER,IDNUMBER`); one table, no `JOIN` |
 | `WhereClause` | the `WHERE` body, without the `WHERE` keyword |
 | `MaxRows` | optional — the backend caps at **100** when it is omitted |
 
@@ -50,7 +50,7 @@ The skill document's first `## Query` step already carries `table`, `fields` and
 `whereClause` with `{placeholder}` tokens. `buildQueryPayload` turns it into the body
 above:
 
-- **Fields** — the field array joined with `,` (no spaces), upper-cased.
+- **Fields** — the field array joined with `, ` (the backend needs the space), upper-cased.
 - **WhereClause** — every `{placeholder}` replaced with the request value. Single quotes
   in a value are doubled so it cannot break out of the string literal.
 - **Zero-padding** — when a placeholder filters a known key field, a purely numeric value
@@ -105,14 +105,14 @@ returns a `SkillRun`:
 Every call to `QuerySet` is logged by `srv/lib/abapQuery.js`:
 
 ```
-QuerySet POST >>> {"url":"/sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet","body":{"TableNmae":"BUT0ID","Fields":"PARTNER,TYPE,IDNUMBER","WhereClause":"PARTNER = '0000000006'"}}
+QuerySet POST >>> {"url":"/sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet","body":{"TableNmae":"BUT0ID","Fields":"PARTNER, TYPE, IDNUMBER","WhereClause":"PARTNER = '0000000006'"}}
 QuerySet POST <<< 201
 ```
 
 On a failure the second line is `QuerySet POST <<< failed` with `status`, the `sent`
 body and the backend `response`. `SkillExecutionService` also logs the resolved
-parameters as `runSkill {...}`. The field list separator lives in one place —
-`FIELD_SEPARATOR` in `abapQuery.js` — in case the backend wants spaces, not commas.
+parameters as `runSkill {...}`. The field-list separator lives in one place —
+`FIELD_SEPARATOR` in `srv/lib/skillExecutor.js` (currently `", "`).
 
 ## Testing
 
