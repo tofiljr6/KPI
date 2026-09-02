@@ -32,11 +32,20 @@ service SkillExecutionService @(path: '/skill-execution') {
     columns   : many String;
     /** Result rows as a JSON array of objects (columns are dynamic). */
     rowsJson  : LargeString;
+    /**
+     * The rows formatted into the answer, following the skill's `## Return` section.
+     * Empty when the formatting step failed – the chat then falls back to a raw table.
+     */
+    answer    : LargeString;
     /** Placeholders that still had no value, when `ran` is false. */
     missing   : many String;
     error     : String;
   }
 
-  /** Run the first query of `skillName`, filling its placeholders from `parameters`. */
-  action runSkill(skillName : String, parameters : many ParamValue, maxRows : Integer) returns SkillRun;
+  /**
+   * Run the first query of `skillName`, filling its placeholders from `parameters`,
+   * then format the rows into `answer` using the skill's `## Return` section and the
+   * original `question`.
+   */
+  action runSkill(question : String, skillName : String, parameters : many ParamValue, maxRows : Integer) returns SkillRun;
 }

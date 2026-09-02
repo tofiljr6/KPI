@@ -223,6 +223,7 @@ export default cds.service.impl(function () {
     let run
     try {
       run = await (await execution()).send('runSkill', {
+        question,
         skillName: route.skillName,
         parameters: route.parameters,
       })
@@ -252,16 +253,13 @@ export default cds.service.impl(function () {
       )
     }
 
-    if (!run.rowCount) {
-      return reply('route', `**${route.skillName}** — no rows matched.`, routeExtra)
-    }
+    // The answer follows the skill's `## Return` section; fall back to a raw table if
+    // the formatting step gave nothing back.
+    const body = run.answer?.trim() || renderRows(run)
 
     return reply(
       'route',
-      [
-        `**${route.skillName}** — ${run.rowCount} row${run.rowCount === 1 ? '' : 's'}.`,
-        renderRows(run),
-      ].join('\n\n'),
+      `_Answered with **${route.skillName}**._\n\n${body}`,
       routeExtra
     )
   }

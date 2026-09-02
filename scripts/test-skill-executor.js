@@ -54,7 +54,20 @@ assert.deepEqual(
 assert.equal('MaxRows' in buildQueryPayload({ table: 'T', fields: ['A'], whereClause: '' }, {}), false)
 assert.equal('MaxRows' in buildQueryPayload({ table: 'T', fields: ['A'], whereClause: '' }, {}, { maxRows: 0 }), false)
 
-// 6. extractRows unwraps the OData V2 envelope and drops __metadata
+// 6. extractRows: the QuerySet `result` field is a JSON string of rows
+assert.deepEqual(
+  extractRows(JSON.stringify({ d: { TableNmae: 'BUT0ID', result: '[{"TYPE":"PL","IDNUMBER":"123"}]' } })),
+  [{ TYPE: 'PL', IDNUMBER: '123' }]
+)
+assert.deepEqual(extractRows(JSON.stringify({ d: { result: '[]' } })), [])
+assert.deepEqual(extractRows(JSON.stringify({ d: { result: '' } })), [], 'empty result string')
+assert.deepEqual(
+  extractRows(JSON.stringify({ d: { result: '{"TYPE":"PL"}' } })),
+  [{ TYPE: 'PL' }],
+  'result holding a single object'
+)
+
+// ...and still falls back to the OData V2 feed shape, dropping __metadata
 assert.deepEqual(
   extractRows(JSON.stringify({ d: { results: [{ __metadata: { uri: 'x' }, PARTNER: '0000000005', TYPE: '1' }] } })),
   [{ PARTNER: '0000000005', TYPE: '1' }]

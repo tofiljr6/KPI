@@ -2,6 +2,7 @@ import cds from '@sap/cds'
 import { placeholdersOf } from './lib/skillMarkdown.js'
 import { buildQueryPayload, extractRows } from './lib/skillExecutor.js'
 import { queryRequestBody } from './lib/abapQuery.js'
+import { formatSkillAnswer } from './lib/skillAnswer.js'
 
 /** A fully-populated SkillRun, so every branch returns the same shape. */
 const runShape = (extra = {}) => ({
@@ -15,6 +16,7 @@ const runShape = (extra = {}) => ({
   rowCount: 0,
   columns: [],
   rowsJson: '[]',
+  answer: '',
   missing: [],
   error: null,
   ...extra,
@@ -25,7 +27,7 @@ export default cds.service.impl(function () {
   const repository = () => cds.connect.to('SkillRepositoryService')
 
   this.on('runSkill', async (req) => {
-    const { skillName } = req.data
+    const { question, skillName } = req.data
     const parameters = req.data.parameters || []
     const maxRows = Number.isInteger(req.data.maxRows) && req.data.maxRows > 0 ? req.data.maxRows : undefined
     if (!skillName || !skillName.trim()) return req.error(400, 'Missing "skillName"')
@@ -82,12 +84,23 @@ export default cds.service.impl(function () {
 
     const rows = extractRows(raw)
     const columns = rows.length ? Object.keys(rows[0]) : query.fields || []
+
+    // Shape the rows into the answer the skill's `## Return` section describes. A
+    // failure here is not fatal – the chat falls back to a raw table.
+    let answer = ''
+    try {
+      answer = await formatSkillAnswer({ question, returns: stored?.doc?.returns, rows })
+    } catch (err) {
+      console.error('runSkill: answer formatting failed', err)
+    }
+
     return runShape({
       ...sent,
       ran: true,
       rowCount: rows.length,
       columns,
       rowsJson: JSON.stringify(rows),
+      answer,
     })
   })
 })

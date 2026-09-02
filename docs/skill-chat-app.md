@@ -75,9 +75,10 @@ stored skill becomes a tool and the model must call exactly one of them, or the 
 
 - **A skill matches and every `{placeholder}` has a value** → the chat calls
   [`SkillExecutionService`](skill-execution.md), which fills the skill's first query
-  (zero-padding `PARTNER` and friends), runs it through `QuerySet` and returns the rows.
-  The reply is just **the skill name it used** plus a Markdown table of the result (capped
-  at 50 rows) — not the query, not the skill document.
+  (zero-padding `PARTNER` and friends), runs it through `QuerySet`, and formats the rows
+  into the answer the skill's `## Return` section describes. The reply is **the skill name
+  it used** plus that answer — not the query, not the skill document. (If formatting
+  fails, it falls back to a raw table of the rows, capped at 50.)
 - **A skill matches but a placeholder is missing** → the reply names the skill and asks
   for the missing value; nothing is sent to SAP.
 - **Nothing fits** → "I do not know how to do that" plus what was missing. The model

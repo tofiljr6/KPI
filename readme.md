@@ -38,7 +38,8 @@ GET/POST skills ─────────────────────�
 plain question ─▶ SkillChatService ─▶ SkillRoutingService  (pick one stored skill)
                      │
                      └─ all placeholders filled? ─▶ SkillExecutionService ─▶ SkillRepositoryService
-                                                        (fill SELECT, zero-pad keys)   └─▶ QuerySet ─▶ SAP
+                            fill SELECT, zero-pad keys        │                    └─▶ QuerySet ─▶ SAP
+                            format rows per ## Return  ◀───────┘  (result JSON)
 ```
 
 ## Repository layout
@@ -59,13 +60,15 @@ srv/
     ├── skillAgent.js               plan → draft pipeline, doc ⇄ SkillInput mapping
     ├── skillMarkdown.js            skill document ⇄ Markdown string (render / parse / validate)
     ├── skillRouter.js              stored skills as tools; picks the one that answers a question
-    ├── skillExecutor.js            skill query → QuerySet payload (fields, {placeholder}s, zero-padding)
+    ├── skillExecutor.js            skill query → QuerySet payload (fields, {placeholder}s, zero-padding); response → rows
+    ├── skillAnswer.js              result rows → the answer in the shape the skill's ## Return describes
     └── model.js                    ChatOpenAI config (env or VCAP_SERVICES)
 scripts/
 ├── test-skill-agent.js            generator only, no SAP
 ├── test-skill-markdown.js         Markdown ⇄ string mapping, fully offline
 ├── test-skill-router.js           routing wiring, fully offline
-├── test-skill-executor.js         QuerySet payload building, fully offline
+├── test-skill-executor.js         QuerySet payload building + result parsing, fully offline
+├── test-skill-answer.js           answer formatter with a stubbed model, fully offline
 ├── test-skill-routing-live.js     routing against the real model (needs a key, no SAP)
 └── test-save-skill.js             generate + POST to SAP
 docs/
