@@ -1,6 +1,7 @@
 import cds from '@sap/cds'
 import { placeholdersOf } from './lib/skillMarkdown.js'
 import { buildQueryPayload, extractRows } from './lib/skillExecutor.js'
+import { queryRequestBody } from './lib/abapQuery.js'
 
 /** A fully-populated SkillRun, so every branch returns the same shape. */
 const runShape = (extra = {}) => ({
@@ -10,6 +11,7 @@ const runShape = (extra = {}) => ({
   fields: '',
   whereClause: '',
   maxRows: null,
+  requestJson: '',
   rowCount: 0,
   columns: [],
   rowsJson: '[]',
@@ -57,27 +59,32 @@ export default cds.service.impl(function () {
     if (missing.length) return runShape({ ...base, missing })
 
     const payload = buildQueryPayload(query, values, { maxRows })
+    // The exact body abapQuery.runQuery will post – so the chat and the log agree.
+    const wireBody = queryRequestBody(payload)
+    const requestJson = JSON.stringify(wireBody)
+    console.log('runSkill', JSON.stringify({ skillName, parameters: values, body: wireBody }))
+
+    const sent = {
+      ...base,
+      fields: wireBody.Fields,
+      whereClause: wireBody.WhereClause,
+      maxRows: wireBody.MaxRows ?? null,
+      requestJson,
+    }
 
     let raw
     try {
       raw = await (await repository()).send('runQuery', payload)
     } catch (err) {
       console.error('runSkill: QuerySet call failed', err)
-      return runShape({
-        ...base,
-        whereClause: payload.WhereClause,
-        maxRows: payload.MaxRows ?? null,
-        error: err.message,
-      })
+      return runShape({ ...sent, error: err.message })
     }
 
     const rows = extractRows(raw)
     const columns = rows.length ? Object.keys(rows[0]) : query.fields || []
     return runShape({
-      ...base,
+      ...sent,
       ran: true,
-      whereClause: payload.WhereClause,
-      maxRows: payload.MaxRows ?? null,
       rowCount: rows.length,
       columns,
       rowsJson: JSON.stringify(rows),

@@ -15,30 +15,58 @@ import { resolveDestination, fetchCsrf, SERVICE_PATH } from './abapSkills.js'
  */
 const ENTITY_SET = 'QuerySet'
 
+/** How the field list is joined in `Fields`. The backend splits on this. */
+const FIELD_SEPARATOR = ','
+
+/** Builds the exact request body posted to QuerySet (also used for logging). */
+export function queryRequestBody({ TableName, Fields, WhereClause, MaxRows } = {}) {
+  const fields = (Array.isArray(Fields) ? Fields : String(Fields || '').split(/[,\s]+/))
+    .map((f) => String(f).trim().toUpperCase())
+    .filter(Boolean)
+
+  const body = {
+    // The ABAP entity property really is spelled "TableNmae" – match the backend.
+    TableNmae: String(TableName || '').trim().toUpperCase(),
+    Fields: fields.join(FIELD_SEPARATOR),
+    WhereClause: String(WhereClause || '').trim(),
+  }
+  if (Number.isInteger(MaxRows) && MaxRows > 0) body.MaxRows = MaxRows
+  return body
+}
+
 /** POST QuerySet (with CSRF token). Returns the raw backend payload as a string. */
-export async function runQuery({ TableName, Fields, WhereClause, MaxRows } = {}) {
+export async function runQuery(params = {}) {
+  const url = `${SERVICE_PATH}/${ENTITY_SET}`
+  const body = queryRequestBody(params)
+
+  console.log('QuerySet POST >>>', JSON.stringify({ url, body }))
+
   const dest = await resolveDestination()
   const csrf = await fetchCsrf(dest)
 
-  const data = {
-    // The ABAP entity property really is spelled "TableNmae" – match the backend.
-    TableNmae: String(TableName || '').trim().toUpperCase(),
-    Fields: String(Fields || '').trim(),
-    WhereClause: String(WhereClause || '').trim(),
+  try {
+    const res = await executeHttpRequest(dest, {
+      method: 'POST',
+      url,
+      data: body,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrf.token,
+        ...(csrf.cookie ? { Cookie: csrf.cookie } : {}),
+      },
+    })
+    console.log('QuerySet POST <<<', res.status)
+    return typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
+  } catch (err) {
+    console.error(
+      'QuerySet POST <<< failed',
+      JSON.stringify({
+        status: err?.response?.status,
+        sent: body,
+        response: err?.response?.data ?? err?.message,
+      })
+    )
+    throw err
   }
-  if (Number.isInteger(MaxRows) && MaxRows > 0) data.MaxRows = MaxRows
-
-  const res = await executeHttpRequest(dest, {
-    method: 'POST',
-    url: `${SERVICE_PATH}/${ENTITY_SET}`,
-    data,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': csrf.token,
-      ...(csrf.cookie ? { Cookie: csrf.cookie } : {}),
-    },
-  })
-  console.log('ABAP QuerySet status:', res.status)
-  return typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
 }

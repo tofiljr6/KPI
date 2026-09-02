@@ -26,6 +26,8 @@ service SkillExecutionService @(path: '/skill-execution') {
     /** WHERE clause with the placeholder values substituted. */
     whereClause : String;
     maxRows     : Integer;
+    /** The exact JSON body posted to the QuerySet entity. */
+    requestJson : LargeString;
     rowCount  : Integer;
     columns   : many String;
     /** Result rows as a JSON array of objects (columns are dynamic). */
