@@ -117,10 +117,15 @@ sap.ui.define([
 
     /**
      * Keeps the open document in sync with what the assistant last returned.
-     * Only a draft opens for editing – a delete confirmation or a routed skill is
-     * read-only, so the next plain message stays a question instead of an edit.
+     * Only an unsaved draft opens for editing. Once the skill is written to SAP
+     * (or a routed answer comes back), the next plain message is a data request
+     * again — editing a stored skill then needs an explicit `/update-skill`.
      */
     _syncContext: function (message) {
+      if (message.saved || message.kind === 'route') {
+        this._context = null
+        return
+      }
       var editable = message.mode === 'create' || message.mode === 'update'
       if (message.markdown && editable) {
         this._context = {
@@ -129,8 +134,6 @@ sap.ui.define([
           mode: message.mode,
           storedVersion: message.storedVersion || '',
         }
-      } else if (message.saved || message.kind === 'route') {
-        this._context = null
       }
     },
 

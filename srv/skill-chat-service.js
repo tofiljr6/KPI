@@ -551,7 +551,10 @@ export default cds.service.impl(function () {
         markdown: finalMarkdown,
         skill: doc,
         parameters: [...new Set(doc.queries.flatMap((q) => placeholdersOf(q)))],
-        // From here on the chat edits a stored skill.
+        // `mode: update` only so a hand-edit + Save on *this* card is a PUT, not a
+        // duplicate POST. `saved: true` tells the UI to drop the editing context, so
+        // the next plain message is a data request again — not a revision. Editing a
+        // stored skill needs an explicit /update-skill.
         mode: 'update',
         target: doc.name,
         storedVersion: doc.version,
