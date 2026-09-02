@@ -116,6 +116,27 @@ export function placeholdersOf(query) {
   return [...new Set([...source.matchAll(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g)].map((m) => m[1]))]
 }
 
+/**
+ * The {placeholder} tokens the caller must supply for a whole skill document.
+ *
+ * Every placeholder used by a query, MINUS the ones an earlier query already selects as
+ * one of its fields — those are chained in at execution time (step 1 selects ADDRNUMBER
+ * from BUT020, step 2 filters ADRC on `ADDRNUMBER = '{addrnumber}'`), so the user never
+ * provides them. Comparison is case-insensitive; the returned tokens keep their original
+ * casing.
+ */
+export function requiredPlaceholders(doc) {
+  const required = []
+  const produced = new Set()
+  for (const query of doc?.queries || []) {
+    for (const token of placeholdersOf(query)) {
+      if (!produced.has(token.toLowerCase()) && !required.includes(token)) required.push(token)
+    }
+    for (const field of query.fields || []) produced.add(String(field).toLowerCase())
+  }
+  return required
+}
+
 /* ------------------------------------------------------------ frontmatter - */
 
 const needsQuotes = (v) => /^[\s>|&*!%@`{}[\]#-]|[:#]\s|["\n]|\s$/.test(v) || v === ''

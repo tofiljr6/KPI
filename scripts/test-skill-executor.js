@@ -14,7 +14,9 @@ import {
   fieldForPlaceholder,
   normalizeIdValue,
   extractRows,
+  harvestValues,
 } from '../srv/lib/skillExecutor.js'
+import { requiredPlaceholders } from '../srv/lib/skillMarkdown.js'
 
 // 1. which field a placeholder is compared against
 assert.equal(fieldForPlaceholder("PARTNER = '{partner}'", 'partner'), 'PARTNER')
@@ -75,5 +77,27 @@ assert.deepEqual(
 assert.deepEqual(extractRows('{"d":{"results":[]}}'), [])
 assert.deepEqual(extractRows(JSON.stringify({ d: { PARTNER: '1' } })), [{ PARTNER: '1' }], 'single entity')
 assert.deepEqual(extractRows('not json'), [])
+
+// 7. multi-step: harvestValues takes the first row, lowercases the keys
+assert.deepEqual(
+  harvestValues([{ PARTNER: '0000000006', ADDRNUMBER: '0000012345' }, { PARTNER: '0000000006', ADDRNUMBER: '0000099999' }]),
+  { partner: '0000000006', addrnumber: '0000012345' }
+)
+assert.deepEqual(harvestValues([]), {}, 'no rows -> nothing to chain')
+assert.deepEqual(harvestValues([{ A: '', B: null, C: 'x' }]), { c: 'x' }, 'blank values skipped')
+
+// 8. requiredPlaceholders: only what the caller supplies; a chained step's key is excluded
+const addressSkill = {
+  queries: [
+    { table: 'BUT020', fields: ['PARTNER', 'ADDRNUMBER'], whereClause: "PARTNER = '{partner}'" },
+    { table: 'ADRC', fields: ['ADDRNUMBER', 'CITY1'], whereClause: "ADDRNUMBER = '{addrnumber}'" },
+  ],
+}
+assert.deepEqual(requiredPlaceholders(addressSkill), ['partner'], '{addrnumber} comes from step 1')
+
+const twoParamSkill = {
+  queries: [{ table: 'MAKT', fields: ['MATNR', 'MAKTX'], whereClause: "MATNR = '{matnr}' AND SPRAS = '{spras}'" }],
+}
+assert.deepEqual(requiredPlaceholders(twoParamSkill).sort(), ['matnr', 'spras'])
 
 console.log('--- all executor tests passed')

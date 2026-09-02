@@ -4,10 +4,11 @@
  *
  *   { table: 'BUT000', fields: ['PARTNER', 'TYPE'], whereClause: "PARTNER = '{partner}'" }
  *   + { partner: '5' }
- *   -> { TableName: 'BUT000', Fields: 'PARTNER,TYPE', WhereClause: "PARTNER = '0000000005'" }
+ *   -> { TableName: 'BUT000', Fields: 'PARTNER, TYPE', WhereClause: "PARTNER = '0000000005'" }
  *
- * A skill query is always a single-table SELECT, so that is all this handles. Multi-step
- * skills run step 1 only for now.
+ * Every skill query is a single-table SELECT (SAP QuerySet has no JOIN). A skill that
+ * spans tables has one query step per table; SkillExecutionService runs them in order and
+ * feeds each step's result into the next via `harvestValues`.
  */
 
 /**
@@ -73,6 +74,20 @@ export function buildQueryPayload(query, values = {}, { maxRows } = {}) {
   }
   if (Number.isInteger(maxRows) && maxRows > 0) payload.MaxRows = maxRows
   return payload
+}
+
+/**
+ * A step's result as a `{ columnLowercased: value }` map from its FIRST row, so a later
+ * step can fill a `{placeholder}` named after that column (e.g. `{addrnumber}` from a
+ * BUT020 step feeds the ADRC step). Blank values are skipped.
+ */
+export function harvestValues(rows) {
+  const first = Array.isArray(rows) && rows[0] && typeof rows[0] === 'object' ? rows[0] : {}
+  const out = {}
+  for (const [key, value] of Object.entries(first)) {
+    if (value != null && String(value).trim() !== '') out[key.toLowerCase()] = String(value).trim()
+  }
+  return out
 }
 
 /** Drops the OData V2 `__metadata` wrapper from a row. */

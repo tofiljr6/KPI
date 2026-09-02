@@ -78,6 +78,7 @@ import {
   validateSkillDoc,      // doc  -> string[] of problems ([] = usable)
   buildSql, parseSql,    // { table, fields, whereClause } <-> formatted SELECT
   placeholdersOf,        // query -> ['partner', ...]
+  requiredPlaceholders,  // doc -> the {placeholder}s the caller must supply (chained ones excluded)
   bumpVersion,           // '1.0.0' -> '1.1.0' (minor) | '1.0.1' (patch)
   compareVersions,       // -1 / 0 / 1
   todayStamp,            // 'YYYY-MM-DD', what last_updated uses

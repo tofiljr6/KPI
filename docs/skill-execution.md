@@ -7,13 +7,15 @@ Base path: `/skill-execution` · [`srv/skill-execution-service.cds`](../srv/skil
 
 [`SkillRoutingService`](skill-routing.md) picks the one stored skill that answers a
 request. This service is the step after: it takes that skill and the parameter values
-from the request, fills the skill's `SELECT` and runs it against SAP.
+from the request, fills the skill's `SELECT`(s) and runs them against SAP.
 
 ```
-"the group and type of business partner 5"
-  → routing:   GetBusinessPartnerHeader   {partner} = 5
-  → execution: SELECT PARTNER, TYPE, BU_GROUP FROM BUT000 WHERE PARTNER = '0000000005'
-             → rows → formatted into the answer the skill's ## Return section describes
+"the city of business partner 5"
+  → routing:   GetBusinessPartnerCity   {partner} = 5
+  → execution: step 1  SELECT PARTNER, ADDRNUMBER FROM BUT020 WHERE PARTNER = '0000000005'
+                       → ADDRNUMBER = '0000012345'
+               step 2  SELECT ADDRNUMBER, CITY1 FROM ADRC WHERE ADDRNUMBER = '0000012345'
+             → both step results → the answer the skill's ## Return section describes
 ```
 
 ## The backend entity: `QuerySet`
@@ -81,14 +83,29 @@ above:
   Extend the map as more identifiers show up. Non-numeric values (a language key, a name)
   are never touched.
 
+## Multi-step skills (no JOINs)
+
+`QuerySet` runs one single-table `SELECT` — no JOINs. A skill that spans tables has **one
+query step per table**, and `runSkill` runs them in order:
+
+1. Run step 1 with the request values.
+2. Take step 1's **first row** as `{ column → value }` (`harvestValues`) and add it to the
+   value pool.
+3. Run step 2 — its `WHERE` placeholder is named after the column it needs
+   (`ADDRNUMBER = '{addrnumber}'`, filled from step 1). Repeat for further steps.
+4. Format all step results into `answer`; `stepsJson` lists what each step did.
+
+If a later step needs a value no earlier step produced (e.g. step 1 returned nothing),
+execution stops there, `note` says why, and `answer` is built from the steps that ran
+(`ran` stays `true`).
+
 ## What runs, and when
 
-- **Only the first query.** Multi-step skills (step 2 consuming a value from step 1) run
-  step 1 only for now.
-- **Only with every placeholder filled.** If the request is missing one, `runSkill`
-  returns `ran: false` with `missing: [...]` and nothing is sent to SAP — the chat asks
-  the user for the value instead.
-- The chat runs this **automatically** once routing matches and no placeholder is
+- **Only with every *required* placeholder filled.** "Required" excludes placeholders a
+  later step gets from an earlier step (`requiredPlaceholders` in `skillMarkdown.js`) — the
+  caller is never asked for `{addrnumber}`. If a required one is missing, `runSkill`
+  returns `ran: false` with `missing: [...]` and nothing is sent to SAP.
+- The chat runs this **automatically** once routing matches and nothing required is
   missing. A routed skill with a missing placeholder stops at "give me that and I will
   run it".
 
@@ -107,16 +124,16 @@ returns a `SkillRun`:
 
 | Field | Meaning |
 |---|---|
-| `ran` | `true` only when the `SELECT` actually executed |
-| `answer` | the rows formatted per the skill's `## Return` section — what the chat shows; empty when formatting failed |
-| `table`, `fields`, `whereClause` | the query as sent to `QuerySet` (`whereClause` has the values substituted) |
-| `requestJson` | the exact JSON body posted to `QuerySet` — shown in the chat when a run fails |
+| `ran` | `true` once at least one step ran |
+| `answer` | the result formatted per the skill's `## Return` section — what the chat shows; empty when formatting failed |
+| `table`, `fields`, `whereClause` | the **last** step, as sent to `QuerySet` (the step that holds the answer data) |
+| `requestJson` | the JSON body posted for the **first** step — shown in the chat when a run fails |
+| `stepsJson` | `[{ name, table, whereClause, rowCount }]` — one entry per step that ran |
 | `maxRows` | the cap that was sent, or `null` for the backend default |
-| `rowCount` | number of rows returned |
-| `columns` | column names (from the first row, or the skill's field list when empty) |
-| `rowsJson` | the rows as a JSON array of objects — dynamic columns, so a string |
-| `missing` | placeholders still without a value, when `ran` is false |
-| `error` | the backend error, when the call failed |
+| `rowCount`, `columns`, `rowsJson` | the **last** step's rows (fallback table in the chat) |
+| `missing` | required placeholders the caller still owes, when `ran` is false |
+| `note` | set when some but not all steps ran; `ran` stays `true` |
+| `error` | a hard failure (skill has no query, first step failed) |
 
 ## Logs
 

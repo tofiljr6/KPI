@@ -1,6 +1,6 @@
 import cds from '@sap/cds'
-import { placeholdersOf } from './lib/skillMarkdown.js'
-import { buildQueryPayload, extractRows } from './lib/skillExecutor.js'
+import { placeholdersOf, requiredPlaceholders } from './lib/skillMarkdown.js'
+import { buildQueryPayload, extractRows, harvestValues } from './lib/skillExecutor.js'
 import { queryRequestBody } from './lib/abapQuery.js'
 import { formatSkillAnswer } from './lib/skillAnswer.js'
 
@@ -16,8 +16,10 @@ const runShape = (extra = {}) => ({
   rowCount: 0,
   columns: [],
   rowsJson: '[]',
+  stepsJson: '[]',
   answer: '',
   missing: [],
+  note: null,
   error: null,
   ...extra,
 })
@@ -40,67 +42,119 @@ export default cds.service.impl(function () {
       return req.error(err?.response?.status || 500, err.message)
     }
 
-    const query = stored?.doc?.queries?.[0]
-    if (!query || !query.table) {
+    const doc = stored?.doc || {}
+    const queries = (doc.queries || []).filter((q) => q && q.table)
+    if (!queries.length) {
       return runShape({ skillName, error: `Skill "${skillName}" has no runnable query.` })
     }
 
-    // Only values that actually carry something count as "provided".
+    const firstBase = {
+      skillName,
+      table: queries[0].table,
+      fields: (queries[0].fields || []).join(', '),
+      whereClause: queries[0].whereClause || '',
+    }
+
+    // Values keyed by placeholder name: the request supplies some, each step's first row
+    // adds the rest (harvestValues) for the steps that follow it.
     const values = Object.fromEntries(
       parameters
         .filter((p) => p && p.name && String(p.value ?? '').trim())
         .map((p) => [p.name, String(p.value).trim()])
     )
-    const missing = placeholdersOf(query).filter((name) => !(name in values))
-    const base = {
-      skillName,
-      table: query.table,
-      fields: (query.fields || []).join(', '),
-      whereClause: query.whereClause || '',
+
+    // Chained placeholders (produced by an earlier step) are NOT the caller's job.
+    const missing = requiredPlaceholders(doc).filter((name) => !(name in values))
+    if (missing.length) return runShape({ ...firstBase, missing })
+
+    const repo = await repository()
+    const steps = []
+    let requestJson = ''
+    let note = null
+
+    for (let i = 0; i < queries.length; i++) {
+      const q = queries[i]
+      const unresolved = placeholdersOf(q).filter((name) => !(name in values))
+      if (unresolved.length) {
+        note = `Step ${i + 1} ("${q.name}") needs ${unresolved.map((p) => `{${p}}`).join(', ')}, ` +
+          `which the previous step did not return — stopping here.`
+        break
+      }
+
+      const payload = buildQueryPayload(q, values, { maxRows })
+      const wireBody = queryRequestBody(payload)
+      if (i === 0) requestJson = JSON.stringify(wireBody)
+      console.log(
+        `runSkill ${skillName} step ${i + 1}/${queries.length}`,
+        JSON.stringify({ body: wireBody })
+      )
+
+      let raw
+      try {
+        raw = await repo.send('runQuery', payload)
+      } catch (err) {
+        console.error(`runSkill: step ${i + 1} QuerySet call failed`, err)
+        if (i === 0) {
+          return runShape({
+            ...firstBase,
+            whereClause: wireBody.WhereClause,
+            maxRows: wireBody.MaxRows ?? null,
+            requestJson,
+            error: err.message,
+          })
+        }
+        note = `Step ${i + 1} ("${q.name}") failed: ${err.message} — returning what ran.`
+        break
+      }
+
+      const rows = extractRows(raw)
+      steps.push({ name: q.name, table: q.table, whereClause: wireBody.WhereClause, rowCount: rows.length, rows })
+
+      for (const [column, value] of Object.entries(harvestValues(rows))) {
+        if (!(column in values)) values[column] = value
+      }
     }
-    if (missing.length) return runShape({ ...base, missing })
 
-    const payload = buildQueryPayload(query, values, { maxRows })
-    // The exact body abapQuery.runQuery will post – so the chat and the log agree.
-    const wireBody = queryRequestBody(payload)
-    const requestJson = JSON.stringify(wireBody)
-    console.log('runSkill', JSON.stringify({ skillName, parameters: values, body: wireBody }))
-
-    const sent = {
-      ...base,
-      fields: wireBody.Fields,
-      whereClause: wireBody.WhereClause,
-      maxRows: wireBody.MaxRows ?? null,
-      requestJson,
+    if (!steps.length) {
+      return runShape({ ...firstBase, error: note || 'Nothing ran.' })
     }
 
-    let raw
-    try {
-      raw = await (await repository()).send('runQuery', payload)
-    } catch (err) {
-      console.error('runSkill: QuerySet call failed', err)
-      return runShape({ ...sent, error: err.message })
-    }
+    const lastStep = steps[steps.length - 1]
+    const lastQuery = queries[steps.length - 1] || {}
+    const columns = lastStep.rows.length ? Object.keys(lastStep.rows[0]) : lastQuery.fields || []
 
-    const rows = extractRows(raw)
-    const columns = rows.length ? Object.keys(rows[0]) : query.fields || []
-
-    // Shape the rows into the answer the skill's `## Return` section describes. A
-    // failure here is not fatal – the chat falls back to a raw table.
+    // Format the whole result per the skill's `## Return`. One block per step when the
+    // skill has several; a failure here is not fatal (the chat falls back to a table).
     let answer = ''
     try {
-      answer = await formatSkillAnswer({ question, returns: stored?.doc?.returns, rows })
+      answer = await formatSkillAnswer({
+        question,
+        returns: doc.returns,
+        rows:
+          steps.length === 1
+            ? lastStep.rows
+            : steps.map((s) => ({ step: s.name, table: s.table, rows: s.rows })),
+      })
     } catch (err) {
       console.error('runSkill: answer formatting failed', err)
     }
 
     return runShape({
-      ...sent,
+      skillName,
       ran: true,
-      rowCount: rows.length,
+      table: lastStep.table,
+      fields: (lastQuery.fields || []).join(', '),
+      whereClause: lastStep.whereClause,
+      maxRows: maxRows ?? null,
+      requestJson,
+      rowCount: lastStep.rowCount,
       columns,
-      rowsJson: JSON.stringify(rows),
+      rowsJson: JSON.stringify(lastStep.rows),
+      stepsJson: JSON.stringify(
+        steps.map((s) => ({ name: s.name, table: s.table, whereClause: s.whereClause, rowCount: s.rowCount }))
+      ),
       answer,
+      note,
     })
   })
 })

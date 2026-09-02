@@ -10,10 +10,13 @@ import { model } from './model.js'
  */
 
 const SYSTEM = [
-  'You present the result of one SAP query as the answer to a question.',
+  'You present the result of an SAP query as the answer to a question.',
   '',
   'You get three things: the user question, the skill\'s "Return" section (it describes',
-  'the exact shape of the answer), and the result rows as JSON.',
+  'the exact shape of the answer), and the result as JSON. When the skill ran several',
+  'SELECT steps the JSON is an array of { step, table, rows } — one entry per step, in',
+  'order; combine them as the Return section describes (usually the last step holds the',
+  'answer data and earlier steps are lookups).',
   '',
   'Rules:',
   '- Produce the answer in the form the Return section describes — a single value, one',
@@ -44,7 +47,7 @@ export async function formatSkillAnswer({ question, returns, rows } = {}, option
         'Return section of the skill:',
         String(returns || '(none)').trim(),
         '',
-        'Result rows (JSON):',
+        'Result (JSON):',
         JSON.stringify(rows ?? [], null, 2),
       ].join('\n'),
     },
