@@ -32,8 +32,8 @@ const COMMANDS = [
   },
   {
     name: '/list-skills',
-    args: '',
-    description: 'Lists every skill currently stored in SAP',
+    args: '[skill name]',
+    description: 'Lists stored skills, or shows one read-only when you name it',
     example: '/list-skills',
   },
   {
@@ -144,6 +144,19 @@ export default cds.service.impl(function () {
 
   this.on('commands', () => COMMANDS)
 
+  /** Stored skill names, sorted – feeds the `/list-skills <name>` autocomplete. */
+  this.on('skillNames', async () => {
+    try {
+      const skills = await (await repository()).send('getSkillDocs', {})
+      return [...new Set(skills.map((s) => s.doc?.name || s.SkillName).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b)
+      )
+    } catch (err) {
+      console.error('chat: skillNames failed', err)
+      return []
+    }
+  })
+
   /* ------------------------------------------------------------- one turn -- */
 
   this.on('chat', async (req) => {
@@ -162,7 +175,7 @@ export default cds.service.impl(function () {
     if (command === '/create-skill') return createSkill(rest, command)
     if (command === '/update-skill') return openSkill(rest, command)
     if (command === '/delete-skill') return findForDelete(rest, command)
-    if (command === '/list-skills') return listStoredSkills(command)
+    if (command === '/list-skills') return listStoredSkills(command, rest)
 
     return reply('error', `I do not know the command \`${command}\`.\n\n${helpText()}`, {
       command,
@@ -277,8 +290,13 @@ export default cds.service.impl(function () {
     )
   }
 
-  /** /list-skills – every stored skill as a table. Read-only, no card. */
-  async function listStoredSkills(command) {
+  /**
+   * /list-skills – every stored skill as a table (read-only, no card).
+   * /list-skills <name> – that one skill's document, read-only.
+   */
+  async function listStoredSkills(command, query) {
+    if (query && query.trim()) return showStoredSkill(query.trim(), command)
+
     let skills
     try {
       skills = await (await repository()).send('getSkillDocs', {})
@@ -318,6 +336,49 @@ export default cds.service.impl(function () {
       'text',
       `${skills.length} skill${skills.length === 1 ? '' : 's'} stored in SAP:\n\n${table}`,
       { command }
+    )
+  }
+
+  /**
+   * /list-skills <name> – show one stored skill's document, read-only.
+   * No `actions`, so the card carries only "Copy Markdown"; `mode: 'view'` keeps
+   * the UI from treating the next plain message as a revision.
+   */
+  async function showStoredSkill(query, command) {
+    const lookup = await find(query)
+    if (lookup.error) return unreachable(lookup.error, command)
+    if (!lookup.hits.length) {
+      return reply(
+        'error',
+        `No stored skill matches \`${query}\`. Use \`/list-skills\` to see them all.`,
+        { command, error: 'No match' }
+      )
+    }
+
+    const single =
+      lookup.hits.find((h) => h.match === 'exact') || (lookup.hits.length === 1 ? lookup.hits[0] : null)
+    if (!single) return chooseReply(lookup.hits, 'Which skill do you want to see?', command, 'view')
+
+    const doc = normalizeSkillDoc(single.doc)
+    const warnings = single.parseWarnings?.length
+      ? `\n\n_Note: the stored document is incomplete (${single.parseWarnings.join('; ')})._`
+      : ''
+    return reply(
+      'skill',
+      [
+        `**${doc.name}** — v${doc.version}, ${doc.status}.`,
+        '',
+        `Read-only view. Use \`/update-skill ${doc.name}\` to make changes.` + warnings,
+      ].join('\n'),
+      {
+        command,
+        actions: [],
+        markdown: single.markdown,
+        skill: doc,
+        mode: 'view',
+        target: doc.name,
+        storedVersion: doc.version,
+      }
     )
   }
 
