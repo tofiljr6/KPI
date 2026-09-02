@@ -81,4 +81,7 @@ service SkillChatService @(path: '/skill-chat') {
 
   /** The commands the input should suggest – single source of truth for the UI. */
   function commands() returns many ChatCommand;
+
+  /** Stored skill names, for the `/list-skills <name>` argument autocomplete. */
+  function skillNames() returns many String;
 }

@@ -27,6 +27,7 @@ sap.ui.define([
       this._model = new JSONModel({
         messages: [],
         commands: [],
+        skillNames: [],
         suggestions: [],
         input: '',
         busy: false,
@@ -40,6 +41,7 @@ sap.ui.define([
 
       this._renderMessages()
       this._loadCommands()
+      this._loadSkillNames()
 
       this.byId('input').addEventDelegate({
         onkeydown: function (event) {
@@ -102,6 +104,16 @@ sap.ui.define([
         this._model.setProperty('/commands', [])
       }
       this._renderHeroCommands()
+    },
+
+    /** Stored skill names, for the `/list-skills <name>` argument autocomplete. */
+    _loadSkillNames: async function () {
+      try {
+        var data = await this._call('/skillNames()')
+        this._model.setProperty('/skillNames', data.value || [])
+      } catch (err) {
+        this._model.setProperty('/skillNames', [])
+      }
     },
 
     /** Runs one backend call as a turn: busy state, reply, scroll. */
@@ -195,14 +207,14 @@ sap.ui.define([
           name: message.target || '',
           storedVersion: message.storedVersion || '',
         })
-      }.bind(this))
+      }.bind(this)).then(this._loadSkillNames.bind(this))
     },
 
     onDeleteSkill: function (message) {
       if (this._model.getProperty('/busy')) return
       this._turn('Deleting from SAP…', function () {
         return this._call('/confirmDelete', { name: message.target })
-      }.bind(this))
+      }.bind(this)).then(this._loadSkillNames.bind(this))
     },
 
     /* --------------------------------------------------- slash commands -- */
@@ -210,15 +222,43 @@ sap.ui.define([
     onLiveChange: function (event) {
       var value = event.getParameter('value') || ''
       this._model.setProperty('/input', value)
-      var isCommand = /^\/\S*$/.test(value.trim())
-      var query = value.trim().toLowerCase()
-      var matches = !isCommand
-        ? []
-        : this._model.getProperty('/commands').filter(function (c) {
-            return c.name.toLowerCase().indexOf(query) === 0
-          })
-      this._model.setProperty('/suggestions', matches)
+      this._model.setProperty('/suggestions', this._computeSuggestions(value))
       this._renderSuggestions()
+    },
+
+    /**
+     * Autocomplete tiles for the current input:
+     * - `/lis` while typing a command name -> matching slash commands
+     * - `/list-skills <partial>` -> matching stored skill names, as ready-to-send
+     *   `/list-skills <name>` tiles (works like a command with the name as argument)
+     */
+    _computeSuggestions: function (value) {
+      var trimmed = value.trim()
+
+      if (/^\/\S*$/.test(trimmed)) {
+        var query = trimmed.toLowerCase()
+        return this._model.getProperty('/commands').filter(function (c) {
+          return c.name.toLowerCase().indexOf(query) === 0
+        })
+      }
+
+      // Raw value, not trimmed: a trailing space after `/list-skills` already
+      // opens the name list (empty partial matches every skill).
+      var arg = value.match(/^\s*\/list-skills\s+(.*)$/i)
+      if (arg) {
+        var partial = arg[1].trim().toLowerCase()
+        return this._model
+          .getProperty('/skillNames')
+          .filter(function (name) {
+            return name.toLowerCase().indexOf(partial) === 0
+          })
+          .slice(0, 8)
+          .map(function (name) {
+            return { name: '/list-skills ' + name, args: '', description: 'Show this skill (read-only)' }
+          })
+      }
+
+      return []
     },
 
     _applySuggestion: function (command) {
@@ -315,7 +355,12 @@ sap.ui.define([
     /** Ambiguous /delete-skill or /update-skill: let the user pick one. */
     _candidateList: function (message, isLast) {
       var list = new VBox().addStyleClass('kipCandidates')
-      var command = message.mode === 'delete' ? '/delete-skill ' : '/update-skill '
+      var command =
+        message.mode === 'delete'
+          ? '/delete-skill '
+          : message.mode === 'view'
+            ? '/list-skills '
+            : '/update-skill '
       message.candidates.forEach(function (candidate) {
         var tile = new VBox().addStyleClass('kipCandidate')
         var head = new Text().addStyleClass('kipCandidateName')
