@@ -62,7 +62,8 @@ srv/
     ├── skillRouter.js              stored skills as tools; picks the one that answers a question
     ├── skillExecutor.js            skill query → QuerySet payload (fields, {placeholder}s, zero-padding); response → rows
     ├── skillAnswer.js              result rows → the answer in the shape the skill's ## Return describes
-    └── model.js                    ChatOpenAI config (env or VCAP_SERVICES)
+    ├── sapResearch.js              OpenAI web search → the real SAP tables + field names for a request
+    └── model.js                    ChatOpenAI config, model tiers (fast / authoring)
 scripts/
 ├── test-skill-agent.js            generator only, no SAP
 ├── test-skill-markdown.js         Markdown ⇄ string mapping, fully offline
