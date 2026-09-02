@@ -23,6 +23,12 @@ export const ID_FIELD_WIDTH = {
 
 const PLACEHOLDER = /\{([A-Za-z_][A-Za-z0-9_]*)\}/g
 
+/**
+ * How field names are joined in the `Fields` string. The backend requires a space
+ * between names ("PARTNER, IDNUMBER", never "PARTNER,IDNUMBER").
+ */
+export const FIELD_SEPARATOR = ', '
+
 /** The field a `{name}` token is compared against in a WHERE clause, upper-cased. */
 export function fieldForPlaceholder(whereClause, name) {
   const re = new RegExp(
@@ -62,8 +68,7 @@ export function buildQueryPayload(query, values = {}, { maxRows } = {}) {
 
   const payload = {
     TableName: String(query?.table || '').trim().toUpperCase(),
-    // QuerySet splits this on ',' – no stray spaces around the field names.
-    Fields: fields.join(','),
+    Fields: fields.join(FIELD_SEPARATOR),
     WhereClause: fillWhereClause(query?.whereClause, values),
   }
   if (Number.isInteger(maxRows) && maxRows > 0) payload.MaxRows = maxRows

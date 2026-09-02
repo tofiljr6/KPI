@@ -41,17 +41,17 @@ Transport: `@sap-cloud-sdk/http-client` `executeHttpRequest` + `@sap-cloud-sdk/c
 ### `runQuery` request body
 
 ```json
-{ "TableName": "BUT000", "Fields": "PARTNER,TYPE,BU_GROUP",
+{ "TableName": "BUT000", "Fields": "PARTNER, TYPE, BU_GROUP",
   "WhereClause": "PARTNER = '0000000005'", "MaxRows": 10 }
 ```
 
-`Fields` is a **comma-separated** list; `MaxRows` is optional (the backend caps at 100
-when omitted). `runQuery` fetches an `X-CSRF-Token` first, like `createSkill`. It is the
-only endpoint here that is not about the skills themselves — it exists so
-[`SkillExecutionService`](skill-execution.md) has one door to SAP.
+`Fields` names are separated by `, ` (the space is required); `MaxRows` is optional (the
+backend caps at 100 when omitted). `runQuery` fetches an `X-CSRF-Token` first, like
+`createSkill`. It is the only endpoint here that is not about the skills themselves — it
+exists so [`SkillExecutionService`](skill-execution.md) has one door to SAP.
 
-`srv/lib/abapQuery.js` sends `TableName` to the backend as `TableNmae` — that is how the
-property is spelled in the ABAP entity.
+On the wire `srv/lib/abapQuery.js` renames `TableName` to `TableNmae` (the ABAP entity's
+spelling) and re-joins `Fields` with `FIELD_SEPARATOR`.
 
 `getSkills`, `getSkill` and `createSkill` return the **raw backend payload as a string**
 (no remodelling), and log the resolved `DESTINATION` plus the HTTP status.

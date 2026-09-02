@@ -39,14 +39,15 @@ assert.equal(
   "MATNR = '000000000000000042' AND SPRAS = 'E'"
 )
 
-// 4. the full payload: fields joined with ',' and no stray spaces, table upper-cased
+// 4. the full payload: fields separated by ", " (the backend needs the space),
+//    table upper-cased
 assert.deepEqual(
   buildQueryPayload(
     { table: 'but000', fields: ['PARTNER', 'TYPE', 'BU_GROUP'], whereClause: "PARTNER = '{partner}'" },
     { partner: '5' },
     { maxRows: 10 }
   ),
-  { TableName: 'BUT000', Fields: 'PARTNER,TYPE,BU_GROUP', WhereClause: "PARTNER = '0000000005'", MaxRows: 10 }
+  { TableName: 'BUT000', Fields: 'PARTNER, TYPE, BU_GROUP', WhereClause: "PARTNER = '0000000005'", MaxRows: 10 }
 )
 
 // 5. MaxRows is left out unless it is a positive integer
