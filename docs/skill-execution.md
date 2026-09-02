@@ -92,12 +92,27 @@ returns a `SkillRun`:
 |---|---|
 | `ran` | `true` only when the `SELECT` actually executed |
 | `table`, `fields`, `whereClause` | the query as sent to `QuerySet` (`whereClause` has the values substituted) |
+| `requestJson` | the exact JSON body posted to `QuerySet` — shown in the chat when a run fails |
 | `maxRows` | the cap that was sent, or `null` for the backend default |
 | `rowCount` | number of rows returned |
 | `columns` | column names (from the first row, or the skill's field list when empty) |
 | `rowsJson` | the rows as a JSON array of objects — dynamic columns, so a string |
 | `missing` | placeholders still without a value, when `ran` is false |
 | `error` | the backend error, when the call failed |
+
+## Logs
+
+Every call to `QuerySet` is logged by `srv/lib/abapQuery.js`:
+
+```
+QuerySet POST >>> {"url":"/sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet","body":{"TableNmae":"BUT0ID","Fields":"PARTNER,TYPE,IDNUMBER","WhereClause":"PARTNER = '0000000006'"}}
+QuerySet POST <<< 201
+```
+
+On a failure the second line is `QuerySet POST <<< failed` with `status`, the `sent`
+body and the backend `response`. `SkillExecutionService` also logs the resolved
+parameters as `runSkill {...}`. The field list separator lives in one place —
+`FIELD_SEPARATOR` in `abapQuery.js` — in case the backend wants spaces, not commas.
 
 ## Testing
 

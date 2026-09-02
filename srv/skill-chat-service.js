@@ -254,18 +254,20 @@ export default cds.service.impl(function () {
     }
 
     if (!run.ran) {
+      const attempted = run.requestJson
+        ? `Sent to \`QuerySet\`:\n\n\`\`\`json\n${run.requestJson}\n\`\`\``
+        : null
       return reply(
         'route',
         [
           `Use the skill **${route.skillName}** for this.`,
-          '',
-          given ? `From your request: ${given}` : '',
+          given ? `From your request: ${given}` : null,
           run.error ? `Running it failed:\n\n${asCode(run.error)}` : 'I could not run it automatically.',
-          '',
-          checked,
+          attempted,
+          checked || null,
         ]
-          .filter(Boolean)
-          .join('\n'),
+          .filter((part) => part != null && part !== '')
+          .join('\n\n'),
         routeExtra
       )
     }
