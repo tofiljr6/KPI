@@ -297,18 +297,15 @@ export default cds.service.impl(function () {
           name: doc.name || skill.SkillName || '(unnamed)',
           version: doc.version || '',
           status: doc.status || '',
-          reads: [...new Set((doc.queries || []).map((q) => q.table).filter(Boolean))].join(', '),
           description: doc.description || skill.SkillTriggerText || '',
         }
       })
       .sort((a, b) => a.name.localeCompare(b.name))
 
     const table = [
-      '| Skill | Version | Status | Reads | Description |',
-      '| --- | --- | --- | --- | --- |',
-      ...rows.map(
-        (r) => `| ${cell(r.name)} | ${cell(r.version)} | ${cell(r.status)} | ${cell(r.reads)} | ${cell(r.description)} |`
-      ),
+      '| Skill | Version | Status | Description |',
+      '| --- | --- | --- | --- |',
+      ...rows.map((r) => `| ${cell(r.name)} | ${cell(r.version)} | ${cell(r.status)} | ${cell(r.description)} |`),
     ].join('\n')
 
     return reply(
