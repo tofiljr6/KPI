@@ -1,0 +1,91 @@
+<mvc:View
+  controllerName="kip.chat.controller.Chat"
+  xmlns="sap.m"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns:core="sap.ui.core"
+  height="100%"
+  displayBlock="true">
+
+  <!-- renderType="Bare": the default wraps each child in a .sapMFlexItem div with
+       min-height:auto, which stops the conversation area from ever shrinking. -->
+  <VBox class="kipRoot" renderType="Bare">
+
+    <!-- top bar -->
+    <HBox class="kipTopBar" alignItems="Center" justifyContent="SpaceBetween">
+      <HBox alignItems="Center" class="kipBrandBox">
+        <core:Icon src="sap-icon://ai" class="kipBrandIcon"/>
+        <Title text="Skill Chat" level="H1" class="kipBrand"/>
+      </HBox>
+      <Button
+        icon="sap-icon://write-new"
+        text="New chat"
+        type="Transparent"
+        press=".onNewChat"
+        class="kipNewChat"/>
+    </HBox>
+
+    <!-- conversation -->
+    <ScrollContainer id="scroll" vertical="true" horizontal="false" height="100%" width="100%" class="kipScroll">
+      <VBox class="kipThread">
+
+        <!-- empty state -->
+        <VBox id="hero" class="kipHero" alignItems="Center" visible="{= ${/messages}.length === 0 }">
+          <core:Icon src="sap-icon://ai" class="kipHeroIcon"/>
+          <Title text="Let's build a skill" level="H2" class="kipHeroTitle"/>
+          <Text text="Describe the SAP data you need. Plain chat does nothing yet — I act on commands." class="kipHeroText"/>
+          <VBox id="heroCommands" class="kipHeroCommands" width="100%"/>
+        </VBox>
+
+        <VBox id="messages" class="kipMessages"/>
+
+        <!-- thinking indicator -->
+        <HBox id="busy" class="kipThinking" alignItems="Center" visible="{/busy}">
+          <BusyIndicator size="1rem" class="kipThinkingDot"/>
+          <Text text="{/busyText}" class="kipThinkingText"/>
+        </HBox>
+
+      </VBox>
+    </ScrollContainer>
+
+    <!-- composer -->
+    <VBox class="kipComposerWrap">
+      <VBox class="kipComposer">
+
+        <!-- slash-command autocomplete -->
+        <VBox id="suggestions" class="kipSuggest" visible="{= ${/suggestions}.length > 0 }"/>
+
+        <VBox class="kipInputBox">
+          <TextArea
+            id="input"
+            value="{/input}"
+            placeholder="Send a message, or type / to see the commands…"
+            rows="1"
+            growing="true"
+            growingMaxLines="8"
+            width="100%"
+            liveChange=".onLiveChange"
+            class="kipInput"/>
+          <HBox class="kipInputActions" alignItems="Center" justifyContent="SpaceBetween">
+            <Button
+              text="/create-skill"
+              type="Transparent"
+              tooltip="Insert command"
+              press=".onInsertCreateSkill"
+              class="kipSlashHint"/>
+            <Button
+              id="send"
+              icon="sap-icon://paper-plane"
+              type="Emphasized"
+              tooltip="Send (Enter)"
+              enabled="{= ${/input}.length > 0 &amp;&amp; !${/busy} }"
+              press=".onSend"
+              class="kipSend"/>
+          </HBox>
+        </VBox>
+
+        <Text text="Enter to send · Shift+Enter for a new line · / for commands" class="kipFootnote"/>
+      </VBox>
+    </VBox>
+
+  </VBox>
+</mvc:View>

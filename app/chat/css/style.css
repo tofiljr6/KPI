@@ -1,0 +1,226 @@
+/* Claude-like chat surface on top of sap_horizon. */
+
+:root {
+  --kip-bg: #faf9f5;
+  --kip-surface: #ffffff;
+  --kip-border: #e6e3da;
+  --kip-text: #191817;
+  --kip-muted: #6f6b60;
+  --kip-accent: #c2603c;
+  --kip-accent-soft: #f6ece7;
+  --kip-code-bg: #f2f0e9;
+  --kip-radius: 14px;
+  --kip-width: 46rem;
+}
+
+html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; background: var(--kip-bg); }
+
+/* The root owns the viewport height itself: relying on height:100% through the
+   component/view wrappers lets the thread grow and push the composer off-screen. */
+.kipRoot {
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  background: var(--kip-bg);
+  font-family: ui-sans-serif, -apple-system, "Segoe UI", "72", Roboto, sans-serif;
+  color: var(--kip-text);
+}
+
+/* ---------------------------------------------------------------- top bar */
+
+.kipTopBar {
+  flex: 0 0 auto;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--kip-border);
+  background: var(--kip-bg);
+}
+.kipBrandBox { gap: 0.5rem; }
+.kipBrandIcon { color: var(--kip-accent); font-size: 1.1rem; }
+.kipBrand.sapMTitle { font-size: 1rem; font-weight: 600; color: var(--kip-text); }
+.kipNewChat .sapMBtnInner { color: var(--kip-muted); }
+
+/* --------------------------------------------------------------- thread */
+
+.kipRoot > * { min-height: 0; }
+.kipScroll { flex: 1 1 auto; min-height: 0; height: auto !important; background: var(--kip-bg); }
+.kipThread {
+  max-width: var(--kip-width);
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.kipMessages { gap: 1.5rem; }
+
+.kipRow { width: 100%; }
+.kipRow--user { display: flex; justify-content: flex-end; }
+.kipRow--assistant { align-items: stretch; gap: 0.75rem; }
+
+.kipBubble {
+  max-width: 85%;
+  padding: 0.7rem 1rem;
+  background: var(--kip-surface);
+  border: 1px solid var(--kip-border);
+  border-radius: var(--kip-radius);
+  border-bottom-right-radius: 4px;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  color: var(--kip-text);
+}
+
+.kipRow--error .kipMd { color: #9b2c20; }
+
+/* ---------------------------------------------------------- empty state */
+
+.kipHero { padding: 6vh 0 2rem; gap: 0.6rem; text-align: center; }
+.kipHeroIcon { font-size: 2rem; color: var(--kip-accent); }
+.kipHeroTitle.sapMTitle { font-size: 1.6rem; font-weight: 500; }
+.kipHeroText.sapMText { color: var(--kip-muted); max-width: 34rem; line-height: 1.6; }
+.kipHeroCommands { gap: 0.5rem; margin-top: 1.25rem; }
+
+/* -------------------------------------------------------- command tiles */
+
+.kipCmd {
+  border: 1px solid var(--kip-border);
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  background: var(--kip-surface);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  text-align: left;
+}
+.kipCmd:hover { background: var(--kip-accent-soft); border-color: var(--kip-accent); }
+.kipCmdHead { gap: 0.45rem; align-items: baseline; }
+.kipCmdName.sapMText { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 600; color: var(--kip-accent); }
+.kipCmdArgs.sapMText { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--kip-muted); font-size: 0.8rem; }
+.kipCmdDesc.sapMText { color: var(--kip-muted); font-size: 0.8rem; margin-top: 0.15rem; }
+.kipCmd--compact { border-radius: 8px; padding: 0.45rem 0.7rem; }
+
+/* ------------------------------------------------------------- thinking */
+
+.kipThinking { gap: 0.5rem; padding: 0.75rem 0.2rem; }
+.kipThinkingText.sapMText { color: var(--kip-muted); font-size: 0.85rem; }
+
+/* ------------------------------------------------------------- composer */
+
+.kipComposerWrap {
+  flex: 0 0 auto;
+  padding: 0 1rem 1rem;
+  background: linear-gradient(180deg, rgba(250,249,245,0) 0%, var(--kip-bg) 35%);
+}
+.kipComposer { max-width: var(--kip-width); margin: 0 auto; width: 100%; box-sizing: border-box; gap: 0.5rem; }
+
+.kipSuggest {
+  gap: 0.35rem;
+  padding: 0.4rem;
+  background: var(--kip-surface);
+  border: 1px solid var(--kip-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+.kipInputBox {
+  background: var(--kip-surface);
+  border: 1px solid var(--kip-border);
+  border-radius: var(--kip-radius);
+  padding: 0.35rem 0.5rem 0.4rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+.kipInputBox:focus-within { border-color: var(--kip-accent); }
+
+.kipInput .sapMTextAreaInner,
+.kipInput textarea {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  resize: none;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--kip-text);
+  padding: 0.5rem 0.6rem;
+}
+/* Horizon draws the input outline as an inset box-shadow – drop it in every state. */
+.kipInput .sapMInputBaseContentWrapper,
+.kipInput .sapMInputBaseContentWrapper:hover,
+.kipInput.sapMFocus .sapMInputBaseContentWrapper {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.kipInputActions { padding: 0 0.25rem 0.1rem; }
+.kipSlashHint .sapMBtnInner {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--kip-muted);
+}
+.kipSend .sapMBtnInner { border-radius: 10px; }
+
+.kipFootnote.sapMText { color: var(--kip-muted); font-size: 0.72rem; text-align: center; width: 100%; }
+
+/* ------------------------------------------------------- skill doc card */
+
+.kipDoc.sapMPanel {
+  border: 1px solid var(--kip-border);
+  border-radius: var(--kip-radius);
+  background: var(--kip-surface);
+  overflow: hidden;
+}
+.kipDoc--unsaved.sapMPanel { border-color: #d9a441; }
+.kipDocBar.sapMTB { background: var(--kip-code-bg); border: none; border-bottom: 1px solid var(--kip-border); }
+.kipDocTitle.sapMTitle { font-size: 0.9rem; font-weight: 600; }
+.kipDocBadges.sapMText { color: var(--kip-muted); font-size: 0.75rem; margin-left: 0.5rem; }
+
+/* -------------------------------------------------------------- markdown */
+
+.kipMd { line-height: 1.65; font-size: 0.95rem; color: var(--kip-text); }
+.kipMd--doc { padding: 0.25rem 1rem 1rem; }
+.kipMd p { margin: 0 0 0.75rem; }
+.kipMd p:last-child { margin-bottom: 0; }
+.kipMd .kipMd-h { margin: 1.2rem 0 0.5rem; font-weight: 600; line-height: 1.3; }
+.kipMd h2.kipMd-h { font-size: 1.15rem; }
+.kipMd h3.kipMd-h { font-size: 1rem; }
+.kipMd h4.kipMd-h { font-size: 0.92rem; color: var(--kip-muted); text-transform: none; }
+.kipMd ul, .kipMd ol { margin: 0 0 0.75rem; padding-left: 1.3rem; }
+.kipMd li { margin: 0.2rem 0; }
+.kipMd hr { border: none; border-top: 1px solid var(--kip-border); margin: 1rem 0; }
+
+.kipMd code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+  background: var(--kip-code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 5px;
+}
+.kipMd .kipMd-code {
+  background: var(--kip-code-bg);
+  border: 1px solid var(--kip-border);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  overflow-x: auto;
+  margin: 0 0 0.85rem;
+}
+.kipMd .kipMd-code code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.5; }
+
+.kipMd .kipMd-table { border-collapse: collapse; width: 100%; margin: 0 0 0.85rem; font-size: 0.85rem; }
+.kipMd .kipMd-table th, .kipMd .kipMd-table td { border: 1px solid var(--kip-border); padding: 0.4rem 0.6rem; text-align: left; }
+.kipMd .kipMd-table th { background: var(--kip-code-bg); font-weight: 600; }
+
+.kipMd .kipMd-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.15rem 0.9rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  background: var(--kip-code-bg);
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+.kipMd .kipMd-meta dt { color: var(--kip-muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.kipMd .kipMd-meta dd { margin: 0; }
+
+@media (max-width: 600px) {
+  .kipThread, .kipComposer { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .kipBubble { max-width: 95%; }
+}
