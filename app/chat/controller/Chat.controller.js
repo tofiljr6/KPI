@@ -44,11 +44,21 @@ sap.ui.define([
       this.byId('input').addEventDelegate({
         onkeydown: function (event) {
           // keyCode as well as key: some environments dispatch keydown without `key`
+          var suggestions = this._model.getProperty('/suggestions')
+
+          // Tab completes the top command suggestion, then you type the argument.
+          var isTab = event.key === 'Tab' || event.keyCode === 9 || event.which === 9
+          if (isTab && !event.shiftKey && suggestions.length) {
+            event.preventDefault()
+            this._applySuggestion(suggestions[0])
+            return
+          }
+
           var isEnter = event.key === 'Enter' || event.keyCode === 13 || event.which === 13
           if (!isEnter || event.shiftKey) return
           event.preventDefault()
-          if (this._model.getProperty('/suggestions').length) {
-            this._applySuggestion(this._model.getProperty('/suggestions')[0])
+          if (suggestions.length) {
+            this._applySuggestion(suggestions[0])
             return
           }
           this.onSend()
@@ -209,10 +219,6 @@ sap.ui.define([
           })
       this._model.setProperty('/suggestions', matches)
       this._renderSuggestions()
-    },
-
-    onInsertCreateSkill: function () {
-      this._applySuggestion({ name: '/create-skill' })
     },
 
     _applySuggestion: function (command) {

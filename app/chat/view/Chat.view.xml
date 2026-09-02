@@ -70,13 +70,7 @@
             width="100%"
             liveChange=".onLiveChange"
             class="kipInput"/>
-          <HBox class="kipInputActions" alignItems="Center" justifyContent="SpaceBetween">
-            <Button
-              text="/create-skill"
-              type="Transparent"
-              tooltip="Insert command"
-              press=".onInsertCreateSkill"
-              class="kipSlashHint"/>
+          <HBox class="kipInputActions" alignItems="Center" justifyContent="End">
             <Button
               id="send"
               icon="sap-icon://paper-plane"
@@ -88,7 +82,7 @@
           </HBox>
         </VBox>
 
-        <Text text="Enter to send · Shift+Enter for a new line · / for commands" class="kipFootnote"/>
+        <Text text="Enter to send · Shift+Enter for a new line · / for commands, Tab to complete" class="kipFootnote"/>
       </VBox>
     </VBox>
 

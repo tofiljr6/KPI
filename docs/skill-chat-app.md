@@ -24,9 +24,9 @@ enforced on the server too: `chat` never writes, only `saveSkill` and `confirmDe
 | plain message, nothing open | a data request — [routed](skill-routing.md) to a stored skill and, if every placeholder has a value, [run](skill-execution.md) against SAP |
 | `/help` | lists the commands |
 
-The commands are discoverable in three places: the empty-state tiles, a `/create-skill`
-chip next to the send button, and an autocomplete list that appears as soon as the input
-starts with `/`.
+The commands are discoverable in two places: the empty-state tiles and an autocomplete
+list that appears as soon as the input starts with `/`. **Tab** (or Enter) completes the
+top suggestion, so `/c`→Tab gives `/create-skill ` ready for the description.
 
 ### Drafting and saving
 
@@ -152,8 +152,9 @@ produced by the renderer can reach the DOM.
   `ComponentContainer` and beats the stylesheet.
 - **Scrolling.** `ScrollContainer#scrollTo` does not move the container; assign
   `scrollTop` on its DOM node.
-- **Enter to send.** The keydown handler checks `key` *and* `keyCode`, because some
-  environments dispatch keydown without `key`.
+- **Enter to send, Tab to complete.** The keydown handler checks `key` *and* `keyCode`,
+  because some environments dispatch keydown without `key`. Tab is `preventDefault`ed only
+  while there is a suggestion, so it still moves focus normally otherwise.
 
 ## Local run
 
