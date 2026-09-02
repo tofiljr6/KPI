@@ -1,16 +1,19 @@
-/* Claude-like chat surface on top of sap_horizon. */
+/* Fiori freestyle chat surface, built on the sap_horizon theme's own design
+   tokens (--sapXxx custom properties) so it looks and reflows like any other
+   SAP Fiori app instead of a bespoke skin bolted on top of UI5 controls. */
 
 :root {
-  --kip-bg: #faf9f5;
-  --kip-surface: #ffffff;
-  --kip-border: #e6e3da;
-  --kip-text: #191817;
-  --kip-muted: #6f6b60;
-  --kip-accent: #c2603c;
-  --kip-accent-soft: #f6ece7;
-  --kip-code-bg: #f2f0e9;
-  --kip-radius: 14px;
+  --kip-bg: var(--sapBackgroundColor, #f7f7f7);
+  --kip-surface: var(--sapContent_ForegroundColor, #ffffff);
+  --kip-border: var(--sapContent_ForegroundBorderColor, var(--sapList_BorderColor, #d9d9d9));
+  --kip-text: var(--sapTextColor, #1a2733);
+  --kip-muted: var(--sapContent_LabelColor, #6a6d70);
+  --kip-accent: var(--sapBrandColor, var(--sapHighlightColor, #0a6ed1));
+  --kip-accent-rgb: 10, 110, 209; /* Horizon brand blue, for tinted overlays */
+  --kip-code-bg: var(--sapField_BackgroundColor, #fafafa);
+  --kip-radius: 0.5rem;
   --kip-width: 46rem;
+  --kip-font: var(--sapFontFamily, "72", "72full", Arial, Helvetica, sans-serif);
 }
 
 html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; background: var(--kip-bg); }
@@ -22,24 +25,15 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
   height: 100dvh;
   max-height: 100dvh;
   background: var(--kip-bg);
-  font-family: ui-sans-serif, -apple-system, "Segoe UI", "72", Roboto, sans-serif;
+  font-family: var(--kip-font);
   color: var(--kip-text);
 }
 
-/* ---------------------------------------------------------------- top bar */
+/* ---------------------------------------------------------------- shell bar */
 
-.kipTopBar {
-  flex: 0 0 auto;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--kip-border);
-  background: var(--kip-bg);
-}
-.kipBrandBox { gap: 0.5rem; }
-.kipBrandIcon { color: var(--kip-accent); font-size: 1.1rem; }
-.kipBrand.sapMTitle { font-size: 1rem; font-weight: 600; color: var(--kip-text); }
-.kipNewChat .sapMBtnInner { color: var(--kip-muted); }
+.kipShellBar { flex: 0 0 auto; }
 
-/* --------------------------------------------------------------- thread */
+/* ---------------------------------------------------------------- thread */
 
 .kipRoot > * { min-height: 0; }
 .kipScroll { flex: 1 1 auto; min-height: 0; height: auto !important; background: var(--kip-bg); }
@@ -59,16 +53,16 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
 .kipBubble {
   max-width: 85%;
   padding: 0.7rem 1rem;
-  background: var(--kip-surface);
-  border: 1px solid var(--kip-border);
+  background: rgba(var(--kip-accent-rgb), 0.08);
+  border: 1px solid rgba(var(--kip-accent-rgb), 0.24);
   border-radius: var(--kip-radius);
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 2px;
   white-space: pre-wrap;
   line-height: 1.55;
   color: var(--kip-text);
 }
 
-.kipRow--error .kipMd { color: #9b2c20; }
+.kipRow--error .kipMd { color: var(--sapNegativeColor, #b00); }
 
 /* ---------------------------------------------------------- empty state */
 
@@ -82,19 +76,19 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
 
 .kipCmd {
   border: 1px solid var(--kip-border);
-  border-radius: 10px;
+  border-radius: var(--kip-radius);
   padding: 0.6rem 0.85rem;
   background: var(--kip-surface);
   cursor: pointer;
   transition: background 0.12s ease, border-color 0.12s ease;
   text-align: left;
 }
-.kipCmd:hover { background: var(--kip-accent-soft); border-color: var(--kip-accent); }
+.kipCmd:hover { background: rgba(var(--kip-accent-rgb), 0.06); border-color: var(--kip-accent); }
 .kipCmdHead { gap: 0.45rem; align-items: baseline; }
 .kipCmdName.sapMText { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 600; color: var(--kip-accent); }
 .kipCmdArgs.sapMText { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--kip-muted); font-size: 0.8rem; }
 .kipCmdDesc.sapMText { color: var(--kip-muted); font-size: 0.8rem; margin-top: 0.15rem; }
-.kipCmd--compact { border-radius: 8px; padding: 0.45rem 0.7rem; }
+.kipCmd--compact { border-radius: 0.375rem; padding: 0.45rem 0.7rem; }
 
 /* ------------------------------------------------------------- thinking */
 
@@ -106,7 +100,7 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
 .kipComposerWrap {
   flex: 0 0 auto;
   padding: 0 1rem 1rem;
-  background: linear-gradient(180deg, rgba(250,249,245,0) 0%, var(--kip-bg) 35%);
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--kip-bg) 35%);
 }
 .kipComposer { max-width: var(--kip-width); margin: 0 auto; width: 100%; box-sizing: border-box; gap: 0.5rem; }
 
@@ -115,18 +109,18 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
   padding: 0.4rem;
   background: var(--kip-surface);
   border: 1px solid var(--kip-border);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  border-radius: var(--kip-radius);
+  box-shadow: var(--sapContent_Shadow1, 0 4px 16px rgba(0,0,0,0.08));
 }
 
 .kipInputBox {
-  background: var(--kip-surface);
-  border: 1px solid var(--kip-border);
+  background: var(--sapField_BackgroundColor, var(--kip-surface));
+  border: 1px solid var(--sapField_BorderColor, var(--kip-border));
   border-radius: var(--kip-radius);
   padding: 0.35rem 0.5rem 0.4rem;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  box-shadow: var(--sapContent_Shadow0, 0 1px 4px rgba(0,0,0,0.06));
 }
-.kipInputBox:focus-within { border-color: var(--kip-accent); }
+.kipInputBox:focus-within { border-color: var(--sapField_Focus_BorderColor, var(--kip-accent)); }
 
 .kipInput .sapMTextAreaInner,
 .kipInput textarea {
@@ -155,7 +149,6 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
   font-size: 0.78rem;
   color: var(--kip-muted);
 }
-.kipSend .sapMBtnInner { border-radius: 10px; }
 
 .kipFootnote.sapMText { color: var(--kip-muted); font-size: 0.72rem; text-align: center; width: 100%; }
 
@@ -167,8 +160,8 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
   background: var(--kip-surface);
   overflow: hidden;
 }
-.kipDoc--unsaved.sapMPanel { border-color: #d9a441; }
-.kipDocBar.sapMTB { background: var(--kip-code-bg); border: none; border-bottom: 1px solid var(--kip-border); }
+.kipDoc--unsaved.sapMPanel { border-color: var(--sapCriticalColor, #e9730c); }
+.kipDocBar.sapMTB { background: var(--sapGroup_TitleBackground, var(--kip-code-bg)); border: none; border-bottom: 1px solid var(--kip-border); }
 .kipDocTitle.sapMTitle { font-size: 0.9rem; font-weight: 600; }
 .kipDocBadges.sapMText { color: var(--kip-muted); font-size: 0.75rem; margin-left: 0.5rem; }
 
@@ -191,12 +184,12 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
   font-size: 0.85em;
   background: var(--kip-code-bg);
   padding: 0.12em 0.35em;
-  border-radius: 5px;
+  border-radius: 0.3rem;
 }
 .kipMd .kipMd-code {
   background: var(--kip-code-bg);
   border: 1px solid var(--kip-border);
-  border-radius: 10px;
+  border-radius: var(--kip-radius);
   padding: 0.75rem 0.9rem;
   overflow-x: auto;
   margin: 0 0 0.85rem;
@@ -214,7 +207,7 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
   margin: 0 0 1rem;
   padding: 0.7rem 0.9rem;
   background: var(--kip-code-bg);
-  border-radius: 10px;
+  border-radius: var(--kip-radius);
   font-size: 0.82rem;
 }
 .kipMd .kipMd-meta dt { color: var(--kip-muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
@@ -230,13 +223,13 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
 .kipCandidates { gap: 0.4rem; margin-top: 0.25rem; }
 .kipCandidate {
   border: 1px solid var(--kip-border);
-  border-radius: 10px;
+  border-radius: var(--kip-radius);
   padding: 0.55rem 0.8rem;
   background: var(--kip-surface);
   cursor: pointer;
   transition: background 0.12s ease, border-color 0.12s ease;
 }
-.kipCandidate:hover { background: var(--kip-accent-soft); border-color: var(--kip-accent); }
+.kipCandidate:hover { background: rgba(var(--kip-accent-rgb), 0.06); border-color: var(--kip-accent); }
 .kipCandidate--stale { opacity: 0.55; cursor: default; }
 .kipCandidate--stale:hover { background: var(--kip-surface); border-color: var(--kip-border); }
 .kipCandidateHead { gap: 0.5rem; align-items: baseline; }
@@ -246,8 +239,8 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
 
 /* --------------------------------------------------------- document card */
 
-.kipDoc--delete.sapMPanel { border-color: #c0392b; }
-.kipDoc--delete .kipDocBar.sapMTB { background: #fdeeec; border-bottom-color: #f0c3bd; }
+.kipDoc--delete.sapMPanel { border-color: var(--sapNegativeColor, #bb0000); }
+.kipDoc--delete .kipDocBar.sapMTB { background: var(--sapNegativeBackgroundColor, #ffebeb); border-bottom-color: var(--sapNegativeBorderColor, #ffc7c7); }
 
 .kipDocEditor { padding: 0.75rem 1rem 1rem; }
 .kipDocEditor textarea {
@@ -256,7 +249,7 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
   line-height: 1.55 !important;
   background: var(--kip-code-bg) !important;
   border: 1px solid var(--kip-border) !important;
-  border-radius: 8px !important;
+  border-radius: 0.375rem !important;
   box-shadow: none !important;
   color: var(--kip-text);
   padding: 0.7rem 0.85rem !important;
@@ -266,9 +259,6 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
 }
 .kipDocEditor .sapMInputBaseContentWrapper { border: none !important; box-shadow: none !important; background: transparent !important; }
 
-.kipSave .sapMBtnInner { border-radius: 10px; }
-.kipDelete .sapMBtnInner { border-radius: 10px; }
-
 /* A routed skill is shown read-only – it is an answer, not a draft. */
 .kipDoc--route.sapMPanel { border-color: var(--kip-accent); }
-.kipDoc--route .kipDocBar.sapMTB { background: var(--kip-accent-soft); border-bottom-color: #e8cfc4; }
+.kipDoc--route .kipDocBar.sapMTB { background: rgba(var(--kip-accent-rgb), 0.08); border-bottom-color: rgba(var(--kip-accent-rgb), 0.24); }
