@@ -79,8 +79,15 @@ failed — the `GeneratedSkill` JSON with `error` set.
 
 ## Pipeline (`srv/lib/skillAgent.js`)
 
-Two focused LLM calls, no web search:
+Three steps:
 
+0. **`research`** ([`srv/lib/sapResearch.js`](../srv/lib/sapResearch.js)) — OpenAI's
+   built-in **web-search** tool (Responses API) confirms the exact SAP tables and real
+   technical field names for the request against the SAP Help Portal / SE11 / SAP
+   community. Its briefing is passed into the next two steps and treated as authoritative
+   over the model's memory. This is what stops the generator from putting business-partner
+   ID numbers on `BUT000` or inventing field names like `PHONE_NUMBER`. If there is no API
+   key or the call fails, the briefing is empty and the steps fall back to model knowledge.
 1. **`plan`** — a chat prompted as a _senior SAP data-model expert across all modules_
    (SD, MM, FI/CO, HCM, PP, BP, …). Structured output: the primary transparent table, its
    key field, candidate fields, a `confidence` (`high`/`medium`/`low`), alternatives, and
@@ -98,10 +105,8 @@ by [`srv/lib/skillMarkdown.js`](../srv/lib/skillMarkdown.js) — the renderer is
 deterministic, so the model never writes the SQL layout or the heading structure itself.
 `parameters` lists every `{placeholder}` the caller must supply.
 
-> Why a dedicated LLM step and not a web search: SAP standard tables are densely
-> represented in the model's training data, so a focused prompt is more reliable and
-> faster than scraping search results. Real grounding would come from validating the
-> chosen fields against the live system's `$metadata` — a future improvement.
+> Even better grounding would be to validate the chosen fields against the live system's
+> `$metadata` / DDIC — a future improvement on top of the web-search step.
 
 ## Revising (`reviseSkill`)
 
@@ -117,13 +122,18 @@ the bumped version so the user sees it before saving.
 
 ## Model configuration (`srv/lib/model.js`)
 
-`ChatOpenAI`, `temperature: 0`. Credentials resolution order:
+`ChatOpenAI`, `temperature: 0`. Credentials: env vars first (`OPENAI_API_KEY`,
+`OPENAI_BASE_URL`), then a bound service in `VCAP_SERVICES` exposing `OPENAI_API_KEY`.
+`HTTPS_PROXY` / `HTTP_PROXY` are honoured; a short keep-alive dispatcher avoids "Premature
+close" behind TLS-inspecting proxies.
 
-1. env vars `OPENAI_API_KEY`, `OPENAI_MODEL` (default `gpt-4o-mini`), `OPENAI_BASE_URL`
-2. fallback: a bound service in `VCAP_SERVICES` exposing `OPENAI_API_KEY`
-
-`HTTPS_PROXY` / `HTTP_PROXY` are honoured, and a short keep-alive dispatcher avoids
-"Premature close" behind TLS-inspecting proxies.
+| Env var | Used for | Default |
+|---|---|---|
+| `OPENAI_MODEL` | routing, answer formatting, revision prose (`model()`) | `gpt-4o-mini` |
+| `OPENAI_AUTHORING_MODEL` | working out the SAP table + field names when generating a skill (`model({ tier: 'authoring' })`) | falls back to `OPENAI_MODEL` |
+| `OPENAI_AUTHORING_REASONING_EFFORT` | run the authoring model as a reasoning call (`low`/`medium`/`high`) — drops `temperature` | unset |
+| `OPENAI_RESEARCH_MODEL` | the web-search step (`sapResearch.js`) — must support the built-in web-search tool | `gpt-4.1-mini` |
+| `OPENAI_WEB_SEARCH_TOOL` | tool type: `web_search_preview` (openai SDK 4.x) or `web_search` (newer) | `web_search_preview` |
 
 `OPENAI_API_KEY` must be set (in `.env` locally — see [`.env.example`](../.env.example)).
 

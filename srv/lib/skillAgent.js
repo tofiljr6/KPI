@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { model } from './model.js'
+import { researchSapModel } from './sapResearch.js'
 import {
   renderSkillMarkdown,
   parseSkillMarkdown,
@@ -14,8 +15,16 @@ const DATAMODEL_SYSTEM = [
   'WM/EWM, PM, PS, BP/BDT, CS, QM, ...). You know SAP application tables and their real',
   'technical field names in depth.',
   '',
-  'Reference examples (non-exhaustive):',
-  '- Business Partner: BUT000, BUT020 (PARTNER->ADDRNUMBER), BUT021_FS, ADRC, ADR2/ADR3/ADR6, BUT0ID, BUT0BK, BUT100',
+  'Reference examples (non-exhaustive). Match the table to the DATA that is asked for, not',
+  'to the entity — the business partner has one table per kind of data:',
+  '- BUT000  – partner header ONLY: PARTNER, TYPE, BU_GROUP, BPKIND, NAME_ORG1..4, NAME_FIRST,',
+  '            NAME_LAST, BU_SORT1/2, CRUSR, CRDAT. No IDs, no bank data, no address here.',
+  '- BUT0ID  – identification numbers (tax number, VAT reg.no, etc.): PARTNER, TYPE, IDNUMBER,',
+  '            INSTITUTE, ENTRY_DATE, VALID_DATE_FROM, VALID_DATE_TO. TYPE is the ID category.',
+  '- BUT0BK  – bank details: PARTNER, BKVID, BANKS, BANKL, BANKN, BKONT, IBAN, ACCNAME.',
+  '- BUT020 (PARTNER->ADDRNUMBER) then ADRC – postal address (NAME1, CITY1, POST_CODE1, STREET).',
+  '- ADR2 / ADR3 / ADR6 – phone / fax / e-mail, keyed by ADDRNUMBER from BUT020.',
+  '- BUT100 – partner roles: PARTNER, RLTYP.  BUT050/BUT051 – relationships.',
   '- Material (MM): MARA, MARC, MAKT, MBEW, MARD, MVKE',
   '- Sales (SD): VBAK, VBAP, VBRK, VBRP, LIKP, LIPS, KNA1, KNVV',
   '- Purchasing (MM): EKKO, EKPO, EKBE, LFA1, LFB1',
@@ -29,7 +38,15 @@ const DATAMODEL_SYSTEM = [
   'reached through a mapping table (e.g. BUT020 gives ADDRNUMBER, then ADRC gives the address)',
   'or when clearly related detail belongs to the same skill. Do not pad: one step is fine.',
   'Later steps may consume a value produced by an earlier step - say so in dependsOn.',
-  'Use only real SAP technical names.',
+  '',
+  'Accuracy rules — a wrong table or a made-up field breaks the whole skill:',
+  '- Use ONLY real SAP technical table and field names that you are certain exist on that',
+  '  exact table. If you are not sure a field is a real column of the table, leave it out.',
+  '- Never guess an English-looking field name (no "PHONE_NUMBER", "TAX_ID", "EMAIL_ADDRESS").',
+  '  Use the real ones (TEL_NUMBER, IDNUMBER, SMTP_ADDR, ...).',
+  '- When a "Web research" briefing is provided below, its verified table and field names',
+  '  are authoritative — prefer them over your own memory.',
+  '- State in `notes` how confident you are and name any field you are unsure about.',
 ].join('\n')
 
 const SKILL_SYSTEM = [
@@ -150,13 +167,17 @@ export function fromSkillInput(record) {
 export async function runSkillRevision(markdown, instruction, options = {}) {
   const current = parseSkillMarkdown(markdown)
 
-  const draft = await model()
+  const research = await researchSapModel(`${current.description || current.name}. Change: ${instruction}`)
+
+  const draft = await model({ tier: 'authoring' })
     .withStructuredOutput(docSchema)
     .invoke([
       { role: 'system', content: `${DATAMODEL_SYSTEM}\n\n---\n\n${REVISE_SYSTEM}` },
       {
         role: 'user',
-        content: `Current skill document:\n\n${markdown}\n\nChange request: ${instruction}`,
+        content:
+          `Current skill document:\n\n${markdown}\n\nChange request: ${instruction}` +
+          (research ? `\n\nWeb research on the SAP data model:\n${research}` : ''),
       },
     ])
 
@@ -188,18 +209,22 @@ export async function runSkillRevision(markdown, instruction, options = {}) {
 
 /**
  * Natural-language data request -> skill document (Markdown) + ABAP payload.
- * 1. plan  : an SAP-data-model chat lays out the table(s) and 1-4 SELECT steps.
- * 2. draft : turns that plan into the skill document (metadata, purpose, queries, returns).
+ * 0. research : OpenAI web search confirms the real SAP tables + technical field names.
+ * 1. plan     : an SAP-data-model chat lays out the table(s) and 1-4 SELECT steps.
+ * 2. draft    : turns that plan into the skill document (metadata, purpose, queries, returns).
  */
 export async function runSkillAgent(query, options = {}) {
-  const plan = await model()
+  const research = await researchSapModel(query)
+  const researchBlock = research ? `\n\nWeb research on the SAP data model:\n${research}` : ''
+
+  const plan = await model({ tier: 'authoring' })
     .withStructuredOutput(planSchema)
     .invoke([
       { role: 'system', content: DATAMODEL_SYSTEM },
-      { role: 'user', content: `Data request: ${query}` },
+      { role: 'user', content: `Data request: ${query}${researchBlock}` },
     ])
 
-  const draft = await model()
+  const draft = await model({ tier: 'authoring' })
     .withStructuredOutput(docSchema)
     .invoke([
       { role: 'system', content: SKILL_SYSTEM },
@@ -217,7 +242,8 @@ export async function runSkillAgent(query, options = {}) {
                 `${i + 1}. ${s.table} (key ${s.keyField}${s.dependsOn ? `, needs ${s.dependsOn} from an earlier step` : ''})` +
                 ` fields: ${s.fields.join(', ')} - ${s.purpose}`
             )
-            .join('\n'),
+            .join('\n') +
+          researchBlock,
       },
     ])
 
@@ -252,6 +278,7 @@ export async function runSkillAgent(query, options = {}) {
       doc,
       parameters,
       reasoning: draft.reasoning || null,
+      research: research || null,
       tableChoice,
       error: `Generated skill is incomplete: ${problems.join('; ')}`,
     }
@@ -264,6 +291,7 @@ export async function runSkillAgent(query, options = {}) {
     doc,
     parameters,
     reasoning: draft.reasoning || null,
+    research: research || null,
     tableChoice,
     error: null,
   }

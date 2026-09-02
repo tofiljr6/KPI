@@ -3,8 +3,8 @@
   "sap.app": {
     "id": "kip.chat",
     "type": "application",
-    "title": "KIP Skill Chat",
-    "description": "Chat interface for generating and storing SAP skills",
+    "title": "KIP – KI Platform",
+    "description": "KI Platform — route questions to stored SAP skills, and generate new ones",
     "applicationVersion": { "version": "1.0.0" },
     "dataSources": {
       "skillChat": {
