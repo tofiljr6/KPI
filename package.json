@@ -19,7 +19,8 @@
   },
   "scripts": {
     "start": "cds-serve",
-    "test:markdown": "node scripts/test-skill-markdown.js"
+    "test:markdown": "node scripts/test-skill-markdown.js",
+    "test:router": "node scripts/test-skill-router.js"
   },
   "private": true,
   "cds": {

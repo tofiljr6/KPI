@@ -23,6 +23,7 @@ It does two things:
 | `SkillRepositoryService` | `/skill-repository` | The **only** component that talks to SAP on-premise. Bridges to ABAP OData `ZXXXX_SKILL_SRV` via destination `SA1_300`. | [docs/skill-repository-service.md](docs/skill-repository-service.md) |
 | `SkillAuthoringService` | `/skill-authoring` | Natural language → skill definition (LLM). Never calls SAP directly; delegates persistence to `SkillRepositoryService`. | [docs/skill-authoring-service.md](docs/skill-authoring-service.md) |
 | `SkillChatService` | `/skill-chat` | Façade for the chat app: slash commands, drafts, and the save/delete buttons. | [docs/skill-chat-app.md](docs/skill-chat-app.md) |
+| `SkillRoutingService` | `/skill-routing` | Answers a data request with one stored skill — or says it does not know. | [docs/skill-routing.md](docs/skill-routing.md) |
 
 ```
 /create-skill ──▶ SkillChatService ──▶ SkillAuthoringService ──(plan ▶ draft ▶ render)──▶ Markdown skill doc
@@ -45,14 +46,18 @@ srv/
     ├── abapSkills.js               ABAP OData calls (destination, CSRF)  — used only by the repository service
     ├── skillAgent.js               plan → draft pipeline, doc ⇄ SkillInput mapping
     ├── skillMarkdown.js            skill document ⇄ Markdown string (render / parse / validate)
+    ├── skillRouter.js              stored skills as tools; picks the one that answers a question
     └── model.js                    ChatOpenAI config (env or VCAP_SERVICES)
 scripts/
 ├── test-skill-agent.js            generator only, no SAP
 ├── test-skill-markdown.js         Markdown ⇄ string mapping, fully offline
+├── test-skill-router.js           routing wiring, fully offline
+├── test-skill-routing-live.js     routing against the real model (needs a key, no SAP)
 └── test-save-skill.js             generate + POST to SAP
 docs/
 ├── skill-markdown.md
 ├── skill-chat-app.md
+├── skill-routing.md
 ├── skill-repository-service.md
 ├── skill-authoring-service.md
 ├── local-development.md
@@ -74,5 +79,6 @@ npx cds watch
 - `SkillRepositoryService` → `http://localhost:4004/skill-repository`
 - `SkillAuthoringService` → `http://localhost:4004/skill-authoring`
 - `SkillChatService` → `http://localhost:4004/skill-chat`
+- `SkillRoutingService` → `http://localhost:4004/skill-routing`
 
 Hit a snag? [docs/troubleshooting.md](docs/troubleshooting.md).

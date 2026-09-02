@@ -115,17 +115,22 @@ sap.ui.define([
       }
     },
 
-    /** Keeps the open document in sync with what the assistant last returned. */
+    /**
+     * Keeps the open document in sync with what the assistant last returned.
+     * Only a draft opens for editing – a delete confirmation or a routed skill is
+     * read-only, so the next plain message stays a question instead of an edit.
+     */
     _syncContext: function (message) {
-      if (message.markdown) {
+      var editable = message.mode === 'create' || message.mode === 'update'
+      if (message.markdown && editable) {
         this._context = {
           markdown: message.markdown,
           name: message.target || '',
-          mode: message.mode === 'delete' ? '' : message.mode || 'create',
+          mode: message.mode,
           storedVersion: message.storedVersion || '',
         }
-      } else if (message.saved) {
-        this._context = null // the skill was deleted
+      } else if (message.saved || message.kind === 'route') {
+        this._context = null
       }
     },
 
@@ -146,7 +151,7 @@ sap.ui.define([
         ? 'Drafting the skill…'
         : this._context
           ? 'Revising the document…'
-          : 'Thinking…'
+          : 'Looking for a skill that fits…'
       this._turn(busy, function () {
         return this._call('/chat', { message: text, context: this._context || undefined })
       }.bind(this))
@@ -394,7 +399,8 @@ sap.ui.define([
         content: [body],
       }).addStyleClass('kipDoc')
 
-      if (message.kind === 'delete') panel.addStyleClass('kipDoc--delete')
+      if (message.kind === 'route') panel.addStyleClass('kipDoc--route')
+      else if (message.kind === 'delete') panel.addStyleClass('kipDoc--delete')
       else if (actions.indexOf('save') >= 0 && !message.saved) panel.addStyleClass('kipDoc--unsaved')
       return panel
     },

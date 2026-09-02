@@ -16,12 +16,23 @@ sap.ui.define([], function () {
       .replace(/"/g, '&quot;')
   }
 
-  // inline formatting, applied to already-escaped text
+  // Inline formatting, applied to already-escaped text. Code spans are pulled out
+  // first so emphasis markers inside them stay literal; the text is escaped by now,
+  // so the NUL sentinel cannot collide with anything in it.
   var inline = function (text) {
-    return text
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
+    var codes = []
+    var out = String(text).replace(/`([^`]+)`/g, function (match, code) {
+      codes.push(code)
+      return '\u0000' + (codes.length - 1) + '\u0000'
+    })
+    out = out
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+      // `_x_` only at word boundaries, so snake_case identifiers survive
+      .replace(/(^|[\s(])_([^_\n]+)_(?=[\s).,;:!?]|$)/g, '$1<em>$2</em>')
+    return out.replace(/\u0000(\d+)\u0000/g, function (match, index) {
+      return '<code>' + codes[index] + '</code>'
+    })
   }
 
   var isTableRow = function (line) { return /^\s*\|.*\|\s*$/.test(line) }
