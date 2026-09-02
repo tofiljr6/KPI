@@ -3,6 +3,7 @@
   xmlns="sap.m"
   xmlns:mvc="sap.ui.core.mvc"
   xmlns:core="sap.ui.core"
+  xmlns:f="sap.f"
   height="100%"
   displayBlock="true">
 
@@ -10,19 +11,23 @@
        min-height:auto, which stops the conversation area from ever shrinking. -->
   <VBox class="kipRoot" renderType="Bare">
 
-    <!-- top bar -->
-    <HBox class="kipTopBar" alignItems="Center" justifyContent="SpaceBetween">
-      <HBox alignItems="Center" class="kipBrandBox">
-        <core:Icon src="sap-icon://ai" class="kipBrandIcon"/>
-        <Title text="Skill Chat" level="H1" class="kipBrand"/>
-      </HBox>
-      <Button
-        icon="sap-icon://write-new"
-        text="New chat"
-        type="Transparent"
-        press=".onNewChat"
-        class="kipNewChat"/>
-    </HBox>
+    <!-- Fiori shell header -->
+    <f:ShellBar
+      title="Skill Chat"
+      secondTitle="SAP Cloud Application Programming Model"
+      showNotifications="false"
+      showProductSwitcher="false"
+      showSearch="false"
+      class="kipShellBar">
+      <f:additionalContent>
+        <OverflowToolbarButton
+          icon="sap-icon://create-form"
+          text="New chat"
+          type="Transparent"
+          press=".onNewChat"
+          class="kipNewChat"/>
+      </f:additionalContent>
+    </f:ShellBar>
 
     <!-- conversation -->
     <ScrollContainer id="scroll" vertical="true" horizontal="false" height="100%" width="100%" class="kipScroll">

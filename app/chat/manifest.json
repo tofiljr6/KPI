@@ -21,7 +21,7 @@
   "sap.ui5": {
     "dependencies": {
       "minUI5Version": "1.120.0",
-      "libs": { "sap.ui.core": {}, "sap.m": {} }
+      "libs": { "sap.ui.core": {}, "sap.m": {}, "sap.f": {} }
     },
     "rootView": {
       "viewName": "kip.chat.view.Chat",
