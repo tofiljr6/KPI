@@ -7,9 +7,10 @@ import { resolveDestination, fetchCsrf, SERVICE_PATH } from './abapSkills.js'
  * OData query options.
  *
  *   POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet
- *   { "TableName": "BUT000", "Fields": "PARTNER,TYPE,BU_GROUP",
+ *   { "TableNmae": "BUT000", "Fields": "PARTNER,TYPE,BU_GROUP",
  *     "WhereClause": "PARTNER = '0000000005'", "MaxRows": 10 }
  *
+ * `TableNmae` is the backend's spelling of the property, not a typo here.
  * `MaxRows` is optional – the backend caps at 100 when it is left out.
  */
 const ENTITY_SET = 'QuerySet'
@@ -20,7 +21,8 @@ export async function runQuery({ TableName, Fields, WhereClause, MaxRows } = {})
   const csrf = await fetchCsrf(dest)
 
   const data = {
-    TableName: String(TableName || '').trim().toUpperCase(),
+    // The ABAP entity property really is spelled "TableNmae" – match the backend.
+    TableNmae: String(TableName || '').trim().toUpperCase(),
     Fields: String(Fields || '').trim(),
     WhereClause: String(WhereClause || '').trim(),
   }

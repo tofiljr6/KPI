@@ -50,6 +50,9 @@ when omitted). `runQuery` fetches an `X-CSRF-Token` first, like `createSkill`. I
 only endpoint here that is not about the skills themselves — it exists so
 [`SkillExecutionService`](skill-execution.md) has one door to SAP.
 
+`srv/lib/abapQuery.js` sends `TableName` to the backend as `TableNmae` — that is how the
+property is spelled in the ABAP entity.
+
 `getSkills`, `getSkill` and `createSkill` return the **raw backend payload as a string**
 (no remodelling), and log the resolved `DESTINATION` plus the HTTP status.
 
