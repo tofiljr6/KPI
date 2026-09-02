@@ -31,6 +31,12 @@ const COMMANDS = [
     example: '/delete-skill GetBusinessPartnerAddress',
   },
   {
+    name: '/list-skills',
+    args: '',
+    description: 'Lists every skill currently stored in SAP',
+    example: '/list-skills',
+  },
+  {
     name: '/help',
     args: '',
     description: 'Lists the available commands',
@@ -156,6 +162,7 @@ export default cds.service.impl(function () {
     if (command === '/create-skill') return createSkill(rest, command)
     if (command === '/update-skill') return openSkill(rest, command)
     if (command === '/delete-skill') return findForDelete(rest, command)
+    if (command === '/list-skills') return listStoredSkills(command)
 
     return reply('error', `I do not know the command \`${command}\`.\n\n${helpText()}`, {
       command,
@@ -261,6 +268,53 @@ export default cds.service.impl(function () {
       'route',
       `_Answered with **${route.skillName}**._\n\n${body}`,
       routeExtra
+    )
+  }
+
+  /** /list-skills – every stored skill as a table. Read-only, no card. */
+  async function listStoredSkills(command) {
+    let skills
+    try {
+      skills = await (await repository()).send('getSkillDocs', {})
+    } catch (err) {
+      console.error('chat: getSkillDocs failed', err)
+      return unreachable(err.message, command)
+    }
+
+    if (!skills.length) {
+      return reply(
+        'text',
+        `No skills are stored in SAP yet. Create one with \`${COMMANDS[0].name} <description>\`.`,
+        { command }
+      )
+    }
+
+    const cell = (value) => String(value ?? '').replace(/\s*\n\s*/g, ' ').replace(/\|/g, '\\|').trim()
+    const rows = skills
+      .map((skill) => {
+        const doc = skill.doc || {}
+        return {
+          name: doc.name || skill.SkillName || '(unnamed)',
+          version: doc.version || '',
+          status: doc.status || '',
+          reads: [...new Set((doc.queries || []).map((q) => q.table).filter(Boolean))].join(', '),
+          description: doc.description || skill.SkillTriggerText || '',
+        }
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    const table = [
+      '| Skill | Version | Status | Reads | Description |',
+      '| --- | --- | --- | --- | --- |',
+      ...rows.map(
+        (r) => `| ${cell(r.name)} | ${cell(r.version)} | ${cell(r.status)} | ${cell(r.reads)} | ${cell(r.description)} |`
+      ),
+    ].join('\n')
+
+    return reply(
+      'text',
+      `${skills.length} skill${skills.length === 1 ? '' : 's'} stored in SAP:\n\n${table}`,
+      { command }
     )
   }
 

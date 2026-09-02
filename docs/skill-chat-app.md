@@ -19,6 +19,7 @@ enforced on the server too: `chat` never writes, only `saveSkill` and `confirmDe
 | `/create-skill <existing name>` | opens that stored skill instead of drafting a duplicate |
 | `/update-skill <name or text>` | opens a stored skill for editing |
 | `/delete-skill <name or text>` | shows the skill with a **Delete skill** button |
+| `/list-skills` | every skill stored in SAP, as a table (name, version, status, tables it reads, description) |
 | plain message, **unsaved** draft open | a revision instruction — the document is rewritten |
 | plain message, nothing open | a data request — [routed](skill-routing.md) to a stored skill and, if every placeholder has a value, [run](skill-execution.md) against SAP |
 | `/help` | lists the commands |
