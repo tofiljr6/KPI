@@ -59,6 +59,30 @@ const short = (message) => {
 /** Renders an error as a fenced block so long lines scroll instead of overflowing. */
 const asCode = (message) => '```\n' + short(message) + '\n```'
 
+const ROW_LIMIT = 50
+const mdCell = (value) => String(value ?? '').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ').trim()
+
+/** A SkillRun's rows as a Markdown table, capped at ROW_LIMIT. */
+function renderRows(run) {
+  let rows
+  try {
+    rows = JSON.parse(run.rowsJson || '[]')
+  } catch {
+    rows = []
+  }
+  if (!Array.isArray(rows) || !rows.length) return '_No rows matched._'
+
+  const columns = run.columns?.length ? run.columns : Object.keys(rows[0])
+  const shown = rows.slice(0, ROW_LIMIT)
+  const table = [
+    `| ${columns.join(' | ')} |`,
+    `| ${columns.map(() => '---').join(' | ')} |`,
+    ...shown.map((row) => `| ${columns.map((c) => mdCell(row[c])).join(' | ')} |`),
+  ].join('\n')
+
+  return rows.length > ROW_LIMIT ? `${table}\n\n_Showing ${ROW_LIMIT} of ${rows.length} rows._` : table
+}
+
 const reply = (kind, text, extra = {}) => ({
   role: 'assistant',
   kind,
@@ -110,6 +134,7 @@ export default cds.service.impl(function () {
   const authoring = () => cds.connect.to('SkillAuthoringService')
   const repository = () => cds.connect.to('SkillRepositoryService')
   const routing = () => cds.connect.to('SkillRoutingService')
+  const execution = () => cds.connect.to('SkillExecutionService')
 
   this.on('commands', () => COMMANDS)
 
@@ -175,30 +200,96 @@ export default cds.service.impl(function () {
     }
 
     const given = route.parameters.map((p) => `\`{${p.name}}\` = \`${p.value}\``).join(', ')
-    const missing = route.missing.map((p) => `\`{${p}}\``).join(', ')
+
+    // 'route' keeps the document read-only: this is not a draft to edit or save.
+    const routeExtra = {
+      mode: 'route',
+      target: route.skillName,
+      markdown: route.skill ? renderSkillMarkdown(route.skill) : null,
+      skill: route.skill,
+      parameters: route.parameters.map((p) => p.name),
+    }
+
+    // Something is still missing – name it and stop; nothing runs until it is supplied.
+    if (route.missing.length) {
+      const missing = route.missing.map((p) => `\`{${p}}\``).join(', ')
+      return reply(
+        'route',
+        [
+          `Use the skill **${route.skillName}** for this.`,
+          '',
+          given ? `From your request: ${given}` : 'Your request supplies no parameter values yet.',
+          `Still needed: ${missing} — give me ${route.missing.length === 1 ? 'that' : 'those'} and I will run it.`,
+          '',
+          checked,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        routeExtra
+      )
+    }
+
+    // Every placeholder has a value → run the skill's first query against SAP.
+    let run
+    try {
+      run = await (await execution()).send('runSkill', {
+        skillName: route.skillName,
+        parameters: route.parameters,
+      })
+    } catch (err) {
+      console.error('chat: skill execution failed', err)
+      return reply(
+        'route',
+        [
+          `Use the skill **${route.skillName}** for this, but running it failed.`,
+          '',
+          asCode(err.message),
+          '',
+          checked,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        routeExtra
+      )
+    }
+
+    if (!run.ran) {
+      return reply(
+        'route',
+        [
+          `Use the skill **${route.skillName}** for this.`,
+          '',
+          given ? `From your request: ${given}` : '',
+          run.error ? `Running it failed:\n\n${asCode(run.error)}` : 'I could not run it automatically.',
+          '',
+          checked,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        routeExtra
+      )
+    }
+
+    const sqlBlock = [
+      '```sql',
+      `SELECT ${run.fields}`,
+      `  FROM ${run.table}`,
+      ...(run.whereClause ? [` WHERE ${run.whereClause}`] : []),
+      '```',
+    ].join('\n')
 
     return reply(
       'route',
       [
-        `Use the skill **${route.skillName}** for this.`,
-        '',
-        given ? `From your request: ${given}` : 'Your request supplies no parameter values yet.',
-        missing ? `Still needed: ${missing}` : '',
-        '',
-        '_Picking the skill is all I do for now — running its query comes later._',
-        '',
-        checked,
+        `**${route.skillName}** — ${run.rowCount} row${run.rowCount === 1 ? '' : 's'} from \`${run.table}\`.`,
+        given ? `Parameters: ${given}` : null,
+        sqlBlock,
+        renderRows(run),
+        checked || null,
       ]
-        .filter(Boolean)
-        .join('\n'),
-      {
-        // 'route' keeps the document read-only: this is not a draft to edit or save.
-        mode: 'route',
-        target: route.skillName,
-        markdown: route.skill ? renderSkillMarkdown(route.skill) : null,
-        skill: route.skill,
-        parameters: route.parameters.map((p) => p.name),
-      }
+        .filter((part) => part != null && part !== '')
+        .join('\n\n'),
+      routeExtra
     )
   }
 

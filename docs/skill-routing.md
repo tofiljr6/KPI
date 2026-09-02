@@ -12,8 +12,9 @@ This service answers it with **one stored skill**, or with "I do not know how to
   → GetBusinessPartnerEmail   {partner} = 771
 ```
 
-Running the chosen skill's SELECT is a separate, later step. Picking the skill *is* the
-answer for now.
+Picking the skill is all this service does. Running the chosen skill's `SELECT` is a
+separate step, handled by [`SkillExecutionService`](skill-execution.md) — the chat calls
+it right after a match, once every `{placeholder}` has a value.
 
 ## Why it cannot answer from its own knowledge
 
@@ -53,6 +54,10 @@ Four further guards live in `routeQuestion`:
 | `missing` | placeholders the caller still has to supply |
 | `reason` | why nothing matched, when `matched` is false |
 | `considered` | how many skills were offered to the model |
+
+`parameters` and `missing` feed straight into [`SkillExecutionService.runSkill`](skill-execution.md):
+a match with an empty `missing` is run immediately; otherwise the caller has to supply the
+rest first.
 
 ## Testing
 
