@@ -2,7 +2,8 @@
 
 Base path: `/skill-execution` · [`srv/skill-execution-service.cds`](../srv/skill-execution-service.cds) ·
 [`srv/skill-execution-service.js`](../srv/skill-execution-service.js) →
-[`srv/lib/skillExecutor.js`](../srv/lib/skillExecutor.js)
+[`srv/lib/skillExecutor.js`](../srv/lib/skillExecutor.js) (query → payload, rows out) +
+[`srv/lib/skillAnswer.js`](../srv/lib/skillAnswer.js) (rows → answer)
 
 [`SkillRoutingService`](skill-routing.md) picks the one stored skill that answers a
 request. This service is the step after: it takes that skill and the parameter values
@@ -12,7 +13,7 @@ from the request, fills the skill's `SELECT` and runs it against SAP.
 "the group and type of business partner 5"
   → routing:   GetBusinessPartnerHeader   {partner} = 5
   → execution: SELECT PARTNER, TYPE, BU_GROUP FROM BUT000 WHERE PARTNER = '0000000005'
-             → the rows
+             → rows → formatted into the answer the skill's ## Return section describes
 ```
 
 ## The backend entity: `QuerySet`
@@ -43,6 +44,21 @@ POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet
 The call goes through [`SkillRepositoryService.runQuery`](skill-repository-service.md)
 (the only service allowed to touch SAP); the low-level POST with CSRF lives in
 [`srv/lib/abapQuery.js`](../srv/lib/abapQuery.js).
+
+**The response** carries the rows as a JSON string in the `result` property
+(`{ "d": { ..., "result": "[{…},{…}]" } }`). `extractRows` in `skillExecutor.js` parses
+that; it also still handles a plain OData V2 feed as a fallback.
+
+## Formatting the answer (`srv/lib/skillAnswer.js`)
+
+The rows are not dumped as a raw table. `formatSkillAnswer` gives the model the
+**question**, the skill's **`## Return`** section (which states the shape of the answer —
+a single value, a sentence, a Markdown table with named columns, a bullet list, what an
+empty result means) and the rows as JSON, and it writes the answer in that shape, in the
+question's language, using only the values in the rows.
+
+If that call fails, `answer` comes back empty and the chat falls back to a raw Markdown
+table of the rows.
 
 ## From skill query to payload (`srv/lib/skillExecutor.js`)
 
@@ -81,7 +97,8 @@ above:
 `POST /skill-execution/runSkill`
 
 ```json
-{ "skillName": "GetBusinessPartnerHeader",
+{ "question": "what are the identification numbers of business partner 5",
+  "skillName": "GetBusinessPartnerHeader",
   "parameters": [{ "name": "partner", "value": "5" }],
   "maxRows": 10 }
 ```
@@ -91,6 +108,7 @@ returns a `SkillRun`:
 | Field | Meaning |
 |---|---|
 | `ran` | `true` only when the `SELECT` actually executed |
+| `answer` | the rows formatted per the skill's `## Return` section — what the chat shows; empty when formatting failed |
 | `table`, `fields`, `whereClause` | the query as sent to `QuerySet` (`whereClause` has the values substituted) |
 | `requestJson` | the exact JSON body posted to `QuerySet` — shown in the chat when a run fails |
 | `maxRows` | the cap that was sent, or `null` for the backend default |
@@ -117,8 +135,10 @@ parameters as `runSkill {...}`. The field-list separator lives in one place —
 ## Testing
 
 ```bash
-# payload building, zero-padding, response unwrapping — offline
+# payload building, zero-padding, `result` parsing — offline
 npm run test:executor
+# the answer formatter: what the model is given, trimming — offline (stubbed model)
+npm run test:answer
 ```
 
 The full round trip needs the `SA1_300` destination, so run it in SAP Business

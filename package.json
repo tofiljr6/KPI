@@ -21,7 +21,8 @@
     "start": "cds-serve",
     "test:markdown": "node scripts/test-skill-markdown.js",
     "test:router": "node scripts/test-skill-router.js",
-    "test:executor": "node scripts/test-skill-executor.js"
+    "test:executor": "node scripts/test-skill-executor.js",
+    "test:answer": "node scripts/test-skill-answer.js"
   },
   "private": true,
   "cds": {

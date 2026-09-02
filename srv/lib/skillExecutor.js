@@ -82,10 +82,17 @@ export function stripMeta(row) {
   return rest
 }
 
+const normalizeRows = (list) =>
+  (Array.isArray(list) ? list : [])
+    .map(stripMeta)
+    .filter((r) => r && typeof r === 'object' && Object.keys(r).length)
+
 /**
  * QuerySet response (string or object) -> plain result rows.
- * Tolerates the feed shape (`{ d: { results: [...] } }`), a bare array and a single
- * entity; drops `__metadata` and empty rows.
+ *
+ * The QuerySet entity returns the rows as a JSON string in the `result` property; that
+ * is the primary path. Falls back to the OData V2 feed shape
+ * (`{ d: { results: [...] } }`), a bare array or a single entity.
  */
 export function extractRows(raw) {
   let body
@@ -95,6 +102,20 @@ export function extractRows(raw) {
     return []
   }
   const d = body?.d ?? body
+
+  const packed = d?.result ?? d?.Result
+  if (typeof packed === 'string') {
+    try {
+      const parsed = JSON.parse(packed)
+      return normalizeRows(Array.isArray(parsed) ? parsed : [parsed])
+    } catch {
+      return []
+    }
+  }
+  if (packed && typeof packed === 'object') {
+    return normalizeRows(Array.isArray(packed) ? packed : [packed])
+  }
+
   const list = Array.isArray(d?.results)
     ? d.results
     : Array.isArray(d)
@@ -102,5 +123,5 @@ export function extractRows(raw) {
       : d && typeof d === 'object'
         ? [d]
         : []
-  return list.map(stripMeta).filter((r) => r && typeof r === 'object' && Object.keys(r).length)
+  return normalizeRows(list)
 }

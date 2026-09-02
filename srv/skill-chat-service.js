@@ -201,14 +201,9 @@ export default cds.service.impl(function () {
 
     const given = route.parameters.map((p) => `\`{${p.name}}\` = \`${p.value}\``).join(', ')
 
-    // 'route' keeps the document read-only: this is not a draft to edit or save.
-    const routeExtra = {
-      mode: 'route',
-      target: route.skillName,
-      markdown: route.skill ? renderSkillMarkdown(route.skill) : null,
-      skill: route.skill,
-      parameters: route.parameters.map((p) => p.name),
-    }
+    // A routed answer names the skill it used, then just shows the result. It is not a
+    // draft: no document card (that is only for creating / editing a skill), no query.
+    const routeExtra = { mode: 'route', target: route.skillName }
 
     // Something is still missing – name it and stop; nothing runs until it is supplied.
     if (route.missing.length) {
@@ -217,14 +212,9 @@ export default cds.service.impl(function () {
         'route',
         [
           `Use the skill **${route.skillName}** for this.`,
-          '',
           given ? `From your request: ${given}` : 'Your request supplies no parameter values yet.',
           `Still needed: ${missing} — give me ${route.missing.length === 1 ? 'that' : 'those'} and I will run it.`,
-          '',
-          checked,
-        ]
-          .filter(Boolean)
-          .join('\n'),
+        ].join('\n\n'),
         routeExtra
       )
     }
@@ -233,6 +223,7 @@ export default cds.service.impl(function () {
     let run
     try {
       run = await (await execution()).send('runSkill', {
+        question,
         skillName: route.skillName,
         parameters: route.parameters,
       })
@@ -240,15 +231,7 @@ export default cds.service.impl(function () {
       console.error('chat: skill execution failed', err)
       return reply(
         'route',
-        [
-          `Use the skill **${route.skillName}** for this, but running it failed.`,
-          '',
-          asCode(err.message),
-          '',
-          checked,
-        ]
-          .filter(Boolean)
-          .join('\n'),
+        `Use the skill **${route.skillName}** for this, but running it failed.\n\n${asCode(err.message)}`,
         routeExtra
       )
     }
@@ -261,10 +244,8 @@ export default cds.service.impl(function () {
         'route',
         [
           `Use the skill **${route.skillName}** for this.`,
-          given ? `From your request: ${given}` : null,
           run.error ? `Running it failed:\n\n${asCode(run.error)}` : 'I could not run it automatically.',
           attempted,
-          checked || null,
         ]
           .filter((part) => part != null && part !== '')
           .join('\n\n'),
@@ -272,25 +253,13 @@ export default cds.service.impl(function () {
       )
     }
 
-    const sqlBlock = [
-      '```sql',
-      `SELECT ${run.fields}`,
-      `  FROM ${run.table}`,
-      ...(run.whereClause ? [` WHERE ${run.whereClause}`] : []),
-      '```',
-    ].join('\n')
+    // The answer follows the skill's `## Return` section; fall back to a raw table if
+    // the formatting step gave nothing back.
+    const body = run.answer?.trim() || renderRows(run)
 
     return reply(
       'route',
-      [
-        `**${route.skillName}** — ${run.rowCount} row${run.rowCount === 1 ? '' : 's'} from \`${run.table}\`.`,
-        given ? `Parameters: ${given}` : null,
-        sqlBlock,
-        renderRows(run),
-        checked || null,
-      ]
-        .filter((part) => part != null && part !== '')
-        .join('\n\n'),
+      `_Answered with **${route.skillName}**._\n\n${body}`,
       routeExtra
     )
   }
