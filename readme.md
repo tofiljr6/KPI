@@ -22,9 +22,10 @@ It does two things:
 |---|---|---|---|
 | `SkillRepositoryService` | `/skill-repository` | The **only** component that talks to SAP on-premise. Bridges to ABAP OData `ZXXXX_SKILL_SRV` via destination `SA1_300`. | [docs/skill-repository-service.md](docs/skill-repository-service.md) |
 | `SkillAuthoringService` | `/skill-authoring` | Natural language → skill definition (LLM). Never calls SAP directly; delegates persistence to `SkillRepositoryService`. | [docs/skill-authoring-service.md](docs/skill-authoring-service.md) |
+| `SkillChatService` | `/skill-chat` | Façade for the chat app: routes `/create-skill` to authoring + repository. | [docs/skill-chat-app.md](docs/skill-chat-app.md) |
 
 ```
-NL query ──▶ SkillAuthoringService ──(plan ▶ draft ▶ render)──▶ Markdown skill doc
+/create-skill ──▶ SkillChatService ──▶ SkillAuthoringService ──(plan ▶ draft ▶ render)──▶ Markdown skill doc
                      │
                      └─ generateAndCreateSkill ─▶ SkillRepositoryService ─▶ ABAP OData ─▶ SAP
                                                        ▲
@@ -34,6 +35,8 @@ GET/POST skills ─────────────────────�
 ## Repository layout
 
 ```
+app/
+└── chat/                       Fiori (freestyle UI5) chat app – /chat/index.html
 srv/
 ├── skill-types.cds                 shared types: SkillInput, SkillDoc, SkillQuery
 ├── skill-repository-service.cds/js  /skill-repository  (SAP bridge)
@@ -49,6 +52,7 @@ scripts/
 └── test-save-skill.js             generate + POST to SAP
 docs/
 ├── skill-markdown.md
+├── skill-chat-app.md
 ├── skill-repository-service.md
 ├── skill-authoring-service.md
 ├── local-development.md
@@ -66,7 +70,9 @@ cp .env.example .env      # then fill in / generate the values
 npx cds watch
 ```
 
+- **Chat app** → `http://localhost:4004/chat/index.html`
 - `SkillRepositoryService` → `http://localhost:4004/skill-repository`
 - `SkillAuthoringService` → `http://localhost:4004/skill-authoring`
+- `SkillChatService` → `http://localhost:4004/skill-chat`
 
 Hit a snag? [docs/troubleshooting.md](docs/troubleshooting.md).

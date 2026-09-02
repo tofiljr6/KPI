@@ -1,0 +1,37 @@
+{
+  "_version": "1.60.0",
+  "sap.app": {
+    "id": "kip.chat",
+    "type": "application",
+    "title": "KIP Skill Chat",
+    "description": "Chat interface for generating and storing SAP skills",
+    "applicationVersion": { "version": "1.0.0" },
+    "dataSources": {
+      "skillChat": {
+        "uri": "/skill-chat/",
+        "type": "OData",
+        "settings": { "odataVersion": "4.0" }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "deviceTypes": { "desktop": true, "tablet": true, "phone": true }
+  },
+  "sap.ui5": {
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": { "sap.ui.core": {}, "sap.m": {} }
+    },
+    "rootView": {
+      "viewName": "kip.chat.view.Chat",
+      "type": "XML",
+      "async": true,
+      "id": "chatView"
+    },
+    "resources": { "css": [{ "uri": "css/style.css" }] },
+    "models": {
+      "": { "type": "sap.ui.model.json.JSONModel" }
+    }
+  }
+}
