@@ -18,7 +18,8 @@
     "@sap/cds-dk": "^10"
   },
   "scripts": {
-    "start": "cds-serve"
+    "start": "cds-serve",
+    "test:markdown": "node scripts/test-skill-markdown.js"
   },
   "private": true,
   "cds": {

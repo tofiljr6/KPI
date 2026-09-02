@@ -1,4 +1,4 @@
-using { kip.skills.SkillInput } from './skill-types';
+using { kip.skills.SkillInput, kip.skills.SkillDoc } from './skill-types';
 
 /**
  * The only service that talks to the SAP on-premise system.
@@ -10,11 +10,28 @@ using { kip.skills.SkillInput } from './skill-types';
  */
 service SkillRepositoryService @(path: '/skill-repository') {
 
+  /** A stored skill with its Markdown document parsed back into fields. */
+  type StoredSkill {
+    SkillName        : String;
+    SkillTriggerText : String;
+    QueryTable       : String;
+    markdown         : String;
+    doc              : SkillDoc;
+    /** Set when the stored string could not be parsed as a skill document. */
+    parseWarnings    : many String;
+  }
+
   /** Raw response from SkillSet (list). */
   function getSkills() returns String;
 
   /** Raw response from SkillSet('<id>') (single skill). */
   function getSkill(id : String) returns String;
+
+  /** SkillSet('<id>') with SkillDescription parsed from Markdown into a SkillDoc. */
+  function getSkillDoc(id : String) returns StoredSkill;
+
+  /** SkillSet, every entry parsed from Markdown into a SkillDoc. */
+  function getSkillDocs() returns many StoredSkill;
 
   /** Creates a skill (POST SkillSet). Returns the raw created entity. */
   action createSkill(skill : SkillInput) returns String;
