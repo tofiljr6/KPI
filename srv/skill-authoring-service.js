@@ -1,5 +1,5 @@
 import cds from '@sap/cds'
-import { runSkillAgent } from './lib/skillAgent.js'
+import { runSkillAgent, runSkillRevision } from './lib/skillAgent.js'
 import { parseSkillMarkdown, renderSkillMarkdown } from './lib/skillMarkdown.js'
 
 export default cds.service.impl(function () {
@@ -33,6 +33,18 @@ export default cds.service.impl(function () {
 
     const repo = await cds.connect.to('SkillRepositoryService')
     return repo.send('createSkill', { skill: draft.skill })
+  })
+
+  this.on('reviseSkill', async (req) => {
+    const { markdown, instruction, version, status } = req.data
+    if (!markdown || !markdown.trim()) return req.error(400, 'Missing "markdown"')
+    if (!instruction || !instruction.trim()) return req.error(400, 'Missing "instruction"')
+    try {
+      return await runSkillRevision(markdown, instruction, { version, status })
+    } catch (err) {
+      console.error('reviseSkill failed', err)
+      return req.error(500, err.message)
+    }
   })
 
   this.on('parseSkillMarkdown', (req) => {

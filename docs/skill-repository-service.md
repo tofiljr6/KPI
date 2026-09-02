@@ -29,7 +29,10 @@ Transport: `@sap-cloud-sdk/http-client` `executeHttpRequest` + `@sap-cloud-sdk/c
 | `GET /skill-repository/getSkill(id='<id>')` | `GET SkillSet('<id>')` | |
 | `GET /skill-repository/getSkillDoc(id='<id>')` | `GET SkillSet('<id>')` | `SkillDescription` parsed back into a `SkillDoc` |
 | `GET /skill-repository/getSkillDocs()` | `GET SkillSet` | same, for every skill |
+| `GET /skill-repository/findSkills(query='...')` | `GET SkillSet` | ranks stored skills against a name or free text |
 | `POST /skill-repository/createSkill` | `POST SkillSet` | fetches an `X-CSRF-Token` first |
+| `POST /skill-repository/updateSkill` | `PUT <entity>` | replaces a stored skill, addressed by name |
+| `POST /skill-repository/deleteSkill` | `DELETE <entity>` | removes a stored skill, addressed by name |
 
 `getSkills`, `getSkill` and `createSkill` return the **raw backend payload as a string**
 (no remodelling), and log the resolved `DESTINATION` plus the HTTP status.
@@ -68,6 +71,14 @@ query and exist for backwards compatibility only.
   `Accept: application/json` instead.
 - **CSRF**: before `POST`, a `GET <service>/` with `X-CSRF-Token: Fetch` retrieves the
   token and session cookies, which are then sent on the create.
+- **Addressing an entity for update/delete**: the record's own `__metadata.uri` from the
+  OData V2 payload is used, so the service never has to guess which property is the
+  entity key. It falls back to `SkillSet('<SkillName>')` when `__metadata` is absent.
+- **`findSkills`** ranks every stored record: an exact name match (case- and
+  separator-insensitive) wins and is reported as `match: 'exact'`; otherwise words from the
+  query are counted across the name, trigger text and document, and hits come back as
+  `match: 'partial'`, best first. The chat service uses this to decide between acting and
+  asking the user which skill they meant.
 - Errors bubble up as `req.error(status, message)`; the backend error body is logged.
 
 ## Testing

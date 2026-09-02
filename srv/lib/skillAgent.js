@@ -6,6 +6,7 @@ import {
   normalizeSkillDoc,
   validateSkillDoc,
   placeholdersOf,
+  todayStamp,
 } from './skillMarkdown.js'
 
 const DATAMODEL_SYSTEM = [
@@ -50,9 +51,23 @@ const SKILL_SYSTEM = [
   '  meaning for each, plus one line on cardinality (one row / many rows) and what an empty',
   '  result means.',
   '',
-  'Write name, table and field names in technical SAP form (UPPERCASE). Write the prose',
-  '(description, trigger, purpose, query descriptions, returns) in the SAME LANGUAGE as the',
-  "user's data request.",
+  'Write name, table and field names in technical SAP form (UPPERCASE). Write ALL prose',
+  '(description, trigger, purpose, query descriptions, returns) in ENGLISH, whatever language',
+  'the data request itself is in.',
+].join('\n')
+
+const REVISE_SYSTEM = [
+  'You revise an existing SAP skill document. You are given the current document and one',
+  'change request. Return the COMPLETE updated document, not a diff.',
+  '',
+  'Rules:',
+  '- Apply only what the change request asks for. Everything it does not touch stays',
+  '  byte-for-byte as it was - same wording, same queries, same field order.',
+  '- Keep the name unless renaming is explicitly requested.',
+  '- Use real SAP technical names (UPPERCASE) and keep {placeholder} tokens intact.',
+  '- If the request is impossible (a field that does not exist on that table, a table that',
+  '  does not hold that data), return the document unchanged and say so in `reasoning`.',
+  '- All prose stays in ENGLISH.',
 ].join('\n')
 
 const planSchema = z.object({
@@ -83,7 +98,7 @@ const docSchema = z.object({
   name: z.string().describe('PascalCase skill name, e.g. GetBusinessPartnerAddress'),
   description: z.string().describe('One sentence: what data this skill returns'),
   trigger: z.string().describe('Starts with "Use this skill when the user asks for ..."'),
-  purpose: z.string().describe('Markdown prose for the "Cel tego skilla" section'),
+  purpose: z.string().describe('Markdown prose for the "Purpose" section'),
   queries: z
     .array(
       z.object({
@@ -96,7 +111,7 @@ const docSchema = z.object({
     )
     .min(1)
     .max(4),
-  returns: z.string().describe('Markdown prose for the "Rückgabe" section, incl. a column table'),
+  returns: z.string().describe('Markdown prose for the "Return" section, incl. a column table'),
   reasoning: z.string().describe('1-2 sentences on the table/field choice'),
 })
 
@@ -124,6 +139,50 @@ export function fromSkillInput(record) {
       ? parseSkillMarkdown(markdown)
       : normalizeSkillDoc({ name: record?.SkillName, description: record?.SkillTriggerText }),
     trigger: record?.SkillTriggerText || '',
+  }
+}
+
+/**
+ * An existing document + a change request -> the revised document.
+ * `options.version` / `options.status` override what the current document carries
+ * (the chat service bumps the version when the source skill is already stored).
+ */
+export async function runSkillRevision(markdown, instruction, options = {}) {
+  const current = parseSkillMarkdown(markdown)
+
+  const draft = await model()
+    .withStructuredOutput(docSchema)
+    .invoke([
+      { role: 'system', content: `${DATAMODEL_SYSTEM}\n\n---\n\n${REVISE_SYSTEM}` },
+      {
+        role: 'user',
+        content: `Current skill document:\n\n${markdown}\n\nChange request: ${instruction}`,
+      },
+    ])
+
+  const doc = normalizeSkillDoc({
+    name: draft.name || current.name,
+    description: draft.description || current.description,
+    version: options.version || current.version,
+    lastUpdated: options.lastUpdated || todayStamp(),
+    status: options.status || current.status,
+    purpose: draft.purpose,
+    queries: draft.queries,
+    returns: draft.returns,
+  })
+
+  const problems = validateSkillDoc(doc)
+  const markdownOut = renderSkillMarkdown(doc)
+  const parameters = [...new Set(doc.queries.flatMap((q) => placeholdersOf(q)))]
+
+  return {
+    instruction,
+    markdown: markdownOut,
+    doc,
+    parameters,
+    trigger: draft.trigger || '',
+    reasoning: draft.reasoning || null,
+    error: problems.length ? `Revised skill is incomplete: ${problems.join('; ')}` : null,
   }
 }
 

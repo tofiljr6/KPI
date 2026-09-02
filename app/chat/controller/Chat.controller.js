@@ -8,11 +8,15 @@ sap.ui.define([
   'sap/m/Title',
   'sap/m/Button',
   'sap/m/Panel',
+  'sap/m/TextArea',
   'sap/m/Toolbar',
   'sap/m/ToolbarSpacer',
   'sap/m/MessageToast',
   'kip/chat/model/markdown',
-], function (Controller, JSONModel, HTML, VBox, HBox, Text, Title, Button, Panel, Toolbar, ToolbarSpacer, MessageToast, markdown) {
+], function (
+  Controller, JSONModel, HTML, VBox, HBox, Text, Title, Button, Panel, TextArea,
+  Toolbar, ToolbarSpacer, MessageToast, markdown
+) {
   'use strict'
 
   var SERVICE = '/skill-chat'
@@ -30,10 +34,13 @@ sap.ui.define([
       })
       this.getView().setModel(this._model)
 
+      // The document currently open in this chat; sent with every turn so the
+      // assistant revises what the user actually sees, edits included.
+      this._context = null
+
       this._renderMessages()
       this._loadCommands()
 
-      // Enter sends, Shift+Enter inserts a newline
       this.byId('input').addEventDelegate({
         onkeydown: function (event) {
           // keyCode as well as key: some environments dispatch keydown without `key`
@@ -87,25 +94,15 @@ sap.ui.define([
       this._renderHeroCommands()
     },
 
-    /* -------------------------------------------------------------- chat -- */
-
-    onSend: async function () {
-      var text = (this._model.getProperty('/input') || '').trim()
-      if (!text || this._model.getProperty('/busy')) return
-
-      this._push({ role: 'user', text: text })
-      this._model.setProperty('/input', '')
-      this._model.setProperty('/suggestions', [])
-      this._model.setProperty(
-        '/busyText',
-        text.startsWith('/create-skill') ? 'Building the skill and saving it to SAP…' : 'Thinking…'
-      )
+    /** Runs one backend call as a turn: busy state, reply, scroll. */
+    _turn: async function (busyText, run) {
+      this._model.setProperty('/busyText', busyText)
       this._model.setProperty('/busy', true)
       this._scrollToBottom()
-
       try {
-        var reply = await this._call('/chat', { message: text })
-        this._push(reply)
+        var replyMessage = await run()
+        this._push(replyMessage)
+        this._syncContext(replyMessage)
       } catch (err) {
         this._push({
           role: 'assistant',
@@ -118,7 +115,45 @@ sap.ui.define([
       }
     },
 
+    /** Keeps the open document in sync with what the assistant last returned. */
+    _syncContext: function (message) {
+      if (message.markdown) {
+        this._context = {
+          markdown: message.markdown,
+          name: message.target || '',
+          mode: message.mode === 'delete' ? '' : message.mode || 'create',
+          storedVersion: message.storedVersion || '',
+        }
+      } else if (message.saved) {
+        this._context = null // the skill was deleted
+      }
+    },
+
+    /* -------------------------------------------------------------- chat -- */
+
+    onSend: function () {
+      var text = (this._model.getProperty('/input') || '').trim()
+      if (!text || this._model.getProperty('/busy')) return
+      this._model.setProperty('/input', '')
+      this._model.setProperty('/suggestions', [])
+      this._renderSuggestions()
+      this._sendText(text)
+    },
+
+    _sendText: function (text) {
+      this._push({ role: 'user', text: text })
+      var busy = /^\/(create|update)-skill/.test(text)
+        ? 'Drafting the skill…'
+        : this._context
+          ? 'Revising the document…'
+          : 'Thinking…'
+      this._turn(busy, function () {
+        return this._call('/chat', { message: text, context: this._context || undefined })
+      }.bind(this))
+    },
+
     onNewChat: function () {
+      this._context = null
       this._model.setProperty('/messages', [])
       this._model.setProperty('/input', '')
       this._model.setProperty('/suggestions', [])
@@ -129,6 +164,27 @@ sap.ui.define([
       var messages = this._model.getProperty('/messages').concat([message])
       this._model.setProperty('/messages', messages)
       this._renderMessages()
+    },
+
+    /* ------------------------------------------------ save / delete calls -- */
+
+    onSaveSkill: function (message) {
+      if (this._model.getProperty('/busy')) return
+      this._turn('Saving to SAP…', function () {
+        return this._call('/saveSkill', {
+          markdown: message.markdown,
+          mode: message.mode || 'create',
+          name: message.target || '',
+          storedVersion: message.storedVersion || '',
+        })
+      }.bind(this))
+    },
+
+    onDeleteSkill: function (message) {
+      if (this._model.getProperty('/busy')) return
+      this._turn('Deleting from SAP…', function () {
+        return this._call('/confirmDelete', { name: message.target })
+      }.bind(this))
     },
 
     /* --------------------------------------------------- slash commands -- */
@@ -199,9 +255,11 @@ sap.ui.define([
     _renderMessages: function () {
       var container = this.byId('messages')
       container.destroyItems()
-      this._model.getProperty('/messages').forEach(function (message) {
+      var messages = this._model.getProperty('/messages')
+      messages.forEach(function (message, index) {
+        var isLast = index === messages.length - 1
         container.addItem(
-          message.role === 'user' ? this._userMessage(message) : this._assistantMessage(message)
+          message.role === 'user' ? this._userMessage(message) : this._assistantMessage(message, isLast)
         )
       }.bind(this))
     },
@@ -227,49 +285,123 @@ sap.ui.define([
       )
     },
 
-    _assistantMessage: function (message) {
+    _assistantMessage: function (message, isLast) {
       var row = new VBox().addStyleClass('kipRow kipRow--assistant')
       if (message.kind === 'error') row.addStyleClass('kipRow--error')
 
       row.addItem(this._html('<div class="kipMd">' + markdown.render(message.text) + '</div>'))
 
-      if (message.markdown) row.addItem(this._skillCard(message))
+      if (message.candidates && message.candidates.length) {
+        row.addItem(this._candidateList(message, isLast))
+      }
+      if (message.markdown) row.addItem(this._skillCard(message, isLast))
       return row
     },
 
-    /** The generated skill document, shown as a collapsible card. */
-    _skillCard: function (message) {
+    /** Ambiguous /delete-skill or /update-skill: let the user pick one. */
+    _candidateList: function (message, isLast) {
+      var list = new VBox().addStyleClass('kipCandidates')
+      var command = message.mode === 'delete' ? '/delete-skill ' : '/update-skill '
+      message.candidates.forEach(function (candidate) {
+        var tile = new VBox().addStyleClass('kipCandidate')
+        var head = new Text().addStyleClass('kipCandidateName')
+        head.setText(candidate.name)
+        var meta = new Text().addStyleClass('kipCandidateMeta')
+        meta.setText([candidate.version, candidate.status].filter(Boolean).join(' · '))
+        var desc = new Text().addStyleClass('kipCandidateDesc')
+        desc.setText(candidate.description || '')
+        tile.addItem(new HBox({ items: [head, meta] }).addStyleClass('kipCandidateHead'))
+        tile.addItem(desc)
+        if (isLast) {
+          tile.attachBrowserEvent('click', this._sendText.bind(this, command + candidate.name))
+        } else {
+          tile.addStyleClass('kipCandidate--stale')
+        }
+        list.addItem(tile)
+      }.bind(this))
+      return list
+    },
+
+    /**
+     * The skill document. Buttons live only on the newest card, so an older draft
+     * in the scrollback can never be saved or deleted by accident.
+     */
+    _skillCard: function (message, isLast) {
       var skill = message.skill || {}
-      var badges = [skill.version, skill.status, (skill.queries || []).length + ' query']
+      var actions = isLast ? message.actions || [] : []
+      var badges = [skill.version && 'v' + skill.version, skill.status, message.saved ? 'saved' : null]
         .filter(Boolean)
         .join(' · ')
 
       var title = new Title({ level: 'H3' }).addStyleClass('kipDocTitle')
-      title.setText(skill.name || 'Skill')
+      title.setText(skill.name || message.target || 'Skill')
+      var badgeText = new Text().addStyleClass('kipDocBadges')
+      badgeText.setText(badges)
+
+      var bar = [title, badgeText, new ToolbarSpacer()]
+
+      if (actions.indexOf('save') >= 0) {
+        bar.push(new Button({
+          icon: message.editing ? 'sap-icon://display' : 'sap-icon://edit',
+          text: message.editing ? 'Preview' : 'Edit',
+          type: 'Transparent',
+          press: this._toggleEdit.bind(this, message),
+        }))
+      }
+      bar.push(new Button({
+        icon: 'sap-icon://copy',
+        text: 'Copy Markdown',
+        type: 'Transparent',
+        press: this._copy.bind(this, message.markdown),
+      }))
+      if (actions.indexOf('save') >= 0) {
+        bar.push(new Button({
+          icon: 'sap-icon://save',
+          text: message.mode === 'update' ? 'Save skill (update)' : 'Save skill',
+          type: 'Emphasized',
+          press: this.onSaveSkill.bind(this, message),
+        }).addStyleClass('kipSave'))
+      }
+      if (actions.indexOf('delete') >= 0) {
+        bar.push(new Button({
+          icon: 'sap-icon://delete',
+          text: 'Delete skill',
+          type: 'Reject',
+          press: this.onDeleteSkill.bind(this, message),
+        }).addStyleClass('kipDelete'))
+      }
+
+      var body
+      if (message.editing) {
+        body = new TextArea({
+          rows: 18,
+          width: '100%',
+          growing: false,
+          liveChange: function (event) {
+            message.markdown = event.getParameter('value')
+            if (this._context) this._context.markdown = message.markdown
+          }.bind(this),
+        }).addStyleClass('kipDocEditor')
+        body.setValue(message.markdown)
+      } else {
+        body = this._html('<div class="kipMd kipMd--doc">' + markdown.render(message.markdown) + '</div>')
+      }
 
       var panel = new Panel({
         expandable: true,
         expanded: true,
-        headerToolbar: new Toolbar({
-          content: [
-            title,
-            new Text({ text: badges }).addStyleClass('kipDocBadges'),
-            new ToolbarSpacer(),
-            new Button({
-              icon: 'sap-icon://copy',
-              text: 'Copy Markdown',
-              type: 'Transparent',
-              press: this._copy.bind(this, message.markdown),
-            }),
-          ],
-        }).addStyleClass('kipDocBar'),
-        content: [
-          this._html('<div class="kipMd kipMd--doc">' + markdown.render(message.markdown) + '</div>'),
-        ],
+        headerToolbar: new Toolbar({ content: bar }).addStyleClass('kipDocBar'),
+        content: [body],
       }).addStyleClass('kipDoc')
 
-      if (!message.saved) panel.addStyleClass('kipDoc--unsaved')
+      if (message.kind === 'delete') panel.addStyleClass('kipDoc--delete')
+      else if (actions.indexOf('save') >= 0 && !message.saved) panel.addStyleClass('kipDoc--unsaved')
       return panel
+    },
+
+    _toggleEdit: function (message) {
+      message.editing = !message.editing
+      this._renderMessages()
     },
 
     _copy: function (text) {

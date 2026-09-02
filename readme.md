@@ -2,8 +2,8 @@
 
 A SAP CAP (Node.js) application that manages **skills** — Markdown documents that
 describe how to pull a specific piece of data out of SAP: frontmatter
-(`name`, `description`, `version`, `last_updated`, `status`), `## Cel tego skilla`,
-`## Query` (the SQL) and `## Rückgabe` (the result shape). See
+(`name`, `description`, `version`, `last_updated`, `status`), `## Purpose`,
+`## Query` (the SQL) and `## Return` (the result shape). See
 [docs/skill-markdown.md](docs/skill-markdown.md).
 
 Each document is stored in SAP as a **plain string** in `SkillDescription`, and parsed
@@ -14,7 +14,7 @@ It does two things:
 
 1. **Read/write skills in the SAP on-premise system** through an ABAP OData service.
 2. **Generate new skill documents from natural language** with an LLM
-   (e.g. _"chcę dostać dane adresowe partnera"_ → a skill with SELECTs on `BUT020` + `ADRC`).
+   (e.g. _"I need the address data of a business partner"_ → a skill with SELECTs on `BUT020` + `ADRC`).
 
 ## Services
 
@@ -22,7 +22,7 @@ It does two things:
 |---|---|---|---|
 | `SkillRepositoryService` | `/skill-repository` | The **only** component that talks to SAP on-premise. Bridges to ABAP OData `ZXXXX_SKILL_SRV` via destination `SA1_300`. | [docs/skill-repository-service.md](docs/skill-repository-service.md) |
 | `SkillAuthoringService` | `/skill-authoring` | Natural language → skill definition (LLM). Never calls SAP directly; delegates persistence to `SkillRepositoryService`. | [docs/skill-authoring-service.md](docs/skill-authoring-service.md) |
-| `SkillChatService` | `/skill-chat` | Façade for the chat app: routes `/create-skill` to authoring + repository. | [docs/skill-chat-app.md](docs/skill-chat-app.md) |
+| `SkillChatService` | `/skill-chat` | Façade for the chat app: slash commands, drafts, and the save/delete buttons. | [docs/skill-chat-app.md](docs/skill-chat-app.md) |
 
 ```
 /create-skill ──▶ SkillChatService ──▶ SkillAuthoringService ──(plan ▶ draft ▶ render)──▶ Markdown skill doc

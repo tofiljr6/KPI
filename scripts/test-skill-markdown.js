@@ -7,38 +7,44 @@
  * copes with hand-written documents (heading aliases, no numbering, free SQL).
  */
 import assert from 'node:assert/strict'
-import { renderSkillMarkdown, parseSkillMarkdown, validateSkillDoc } from '../srv/lib/skillMarkdown.js'
+import {
+  renderSkillMarkdown,
+  parseSkillMarkdown,
+  validateSkillDoc,
+  bumpVersion,
+  compareVersions,
+} from '../srv/lib/skillMarkdown.js'
 import { toSkillInput, fromSkillInput } from '../srv/lib/skillAgent.js'
 
 const doc = {
   name: 'GetBusinessPartnerAddress',
-  description: 'Zwraca dane adresowe partnera biznesowego: miasto, ulicę i kod pocztowy.',
+  description: 'Returns the address data of a business partner: city, street and postal code.',
   version: '1.0.0',
   lastUpdated: '2026-09-02',
   status: 'draft',
   purpose:
-    'Skill odpowiada na pytania o **adres partnera biznesowego**.\n\n' +
-    '- wymaga numeru partnera (`PARTNER`)\n' +
-    '- nie zwraca danych bankowych ani identyfikatorów',
+    'Answers questions about the **address of a business partner**.\n\n' +
+    '- needs the partner number (`PARTNER`)\n' +
+    '- does not return bank data or identification numbers',
   queries: [
     {
-      name: 'Numer adresu partnera',
-      description: 'Mapuje PARTNER na ADDRNUMBER. Potrzebuje {partner}.',
+      name: 'Address number of the partner',
+      description: 'Maps PARTNER to ADDRNUMBER. Needs {partner}.',
       table: 'but020',
       fields: ['partner', 'addrnumber', 'adr_kind'],
       whereClause: "PARTNER = '{partner}'",
     },
     {
-      name: 'Dane adresowe',
-      description: 'Właściwy adres z ADRC, dla {addrnumber} z kroku 1.',
+      name: 'Address data',
+      description: 'The address itself from ADRC, for the {addrnumber} of step 1.',
       table: 'ADRC',
       fields: ['ADDRNUMBER', 'NAME1', 'CITY1', 'POST_CODE1', 'STREET'],
       whereClause: "ADDRNUMBER = '{addrnumber}'",
     },
   ],
   returns:
-    'Jeden wiersz na adres:\n\n| Pole | Znaczenie |\n|---|---|\n| CITY1 | Miasto |\n| STREET | Ulica |\n\n' +
-    'Pusty wynik = partner nie ma adresu.',
+    'One row per address:\n\n| Column | Meaning |\n|---|---|\n| CITY1 | City |\n| STREET | Street |\n\n' +
+    'An empty result means the partner has no address.',
 }
 
 // 1. render -> parse -> render is stable
@@ -54,10 +60,10 @@ assert.equal(parsed.queries[0].table, 'BUT020')
 assert.deepEqual(parsed.queries[1].fields, ['ADDRNUMBER', 'NAME1', 'CITY1', 'POST_CODE1', 'STREET'])
 assert.equal(parsed.queries[1].whereClause, "ADDRNUMBER = '{addrnumber}'")
 
-// 2. hand-written document: EN/DE headings, no numbering, single-line SQL
+// 2. hand-written document: legacy PL/DE headings, no numbering, single-line SQL
 const handWritten = `---
 name: GetMaterialDescription
-description: Zwraca opis materiału.
+description: Returns the material description.
 version: 2
 last updated: 2026-01-15
 status: active
@@ -65,42 +71,44 @@ status: active
 
 # GetMaterialDescription
 
-## Purpose
+## Cel tego skilla
 
-Krótki opis po polsku.
+A short purpose.
 
-## Queries
+## Zapytania
 
-### Opis materiału
+### Material description
 
-Bez numeracji, SQL w jednej linii.
+No numbering, SQL on one line.
 
 \`\`\`sql
 select matnr, maktx from makt where matnr = '{matnr}' and spras = '{spras}'
 \`\`\`
 
-## Return
+## Rückgabe
 
-Jeden wiersz na język.
+One row per language.
 `
 const hw = parseSkillMarkdown(handWritten)
 assert.equal(hw.name, 'GetMaterialDescription')
 assert.equal(hw.status, 'active')
 assert.equal(hw.lastUpdated, '2026-01-15')
-assert.equal(hw.purpose, 'Krótki opis po polsku.')
+assert.equal(hw.purpose, 'A short purpose.')
 assert.equal(hw.queries.length, 1)
-assert.equal(hw.queries[0].name, 'Opis materiału')
+assert.equal(hw.queries[0].name, 'Material description')
 assert.equal(hw.queries[0].table, 'MAKT')
 assert.deepEqual(hw.queries[0].fields, ['MATNR', 'MAKTX'])
 // the WHERE clause is kept verbatim - uppercasing it would break {placeholders} and literals
 assert.equal(hw.queries[0].whereClause, "matnr = '{matnr}' and spras = '{spras}'")
-assert.equal(hw.returns, 'Jeden wiersz na język.')
+assert.equal(hw.returns, 'One row per language.')
 
-// 3. re-rendering a hand-written doc normalises it into the canonical format
+// 3. re-rendering normalises legacy PL/DE headings into the English canonical form
 const normalised = renderSkillMarkdown(hw)
-assert.match(normalised, /^## Cel tego skilla$/m)
-assert.match(normalised, /^## Rückgabe$/m)
-assert.match(normalised, /^### 1\. Opis materiału$/m)
+assert.match(normalised, /^## Purpose$/m)
+assert.match(normalised, /^## Query$/m)
+assert.match(normalised, /^## Return$/m)
+assert.doesNotMatch(normalised, /Cel tego skilla|Rückgabe/)
+assert.match(normalised, /^### 1\. Material description$/m)
 assert.equal(renderSkillMarkdown(parseSkillMarkdown(normalised)), normalised)
 
 // 4. a document with no queries is reported, not silently accepted
@@ -125,6 +133,14 @@ assert.equal(restored.trigger, record.SkillTriggerText)
 const legacy = fromSkillInput({ SkillName: 'OldSkill', SkillTriggerText: 'Use this skill when ...' })
 assert.equal(legacy.doc.name, 'OldSkill')
 assert.ok(validateSkillDoc(legacy.doc).length, 'legacy record should report missing sections')
+
+// 6. version helpers – what a save/update relies on
+assert.equal(bumpVersion('1.0.0'), '1.1.0')
+assert.equal(bumpVersion('1.2.3', 'patch'), '1.2.4')
+assert.equal(bumpVersion('2', 'major'), '3.0.0')
+assert.equal(compareVersions('1.0.0', '1.1.0'), -1)
+assert.equal(compareVersions('1.10.0', '1.9.0'), 1)
+assert.equal(compareVersions('1.0', '1.0.0'), 0)
 
 console.log(md)
 console.log('--- all mapping tests passed')

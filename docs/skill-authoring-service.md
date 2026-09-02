@@ -13,24 +13,25 @@ Turns a free-text data request into a **skill document in Markdown**
 |---|---|
 | `POST /skill-authoring/generateSkill` | natural language → skill document. No persistence. |
 | `POST /skill-authoring/generateAndCreateSkill` | `generateSkill`, then `SkillRepositoryService.createSkill` |
+| `POST /skill-authoring/reviseSkill` | existing document + a change request → the revised document |
 | `POST /skill-authoring/parseSkillMarkdown` | Markdown string → structured `SkillDoc` |
 | `POST /skill-authoring/renderSkillMarkdown` | structured `SkillDoc` → Markdown string |
 
 Request body for the first two (`version` defaults to `1.0.0`, `status` to `draft`):
 
 ```json
-{ "query": "chcę dostać dane adresowe partnera", "version": "1.0.0", "status": "draft" }
+{ "query": "I need the address data of a business partner", "version": "1.0.0", "status": "draft" }
 ```
 
 `generateSkill` returns a `GeneratedSkill`:
 
 ```json
 {
-  "query": "chcę dostać dane adresowe partnera",
+  "query": "I need the address data of a business partner",
   "markdown": "---\nname: GetBusinessPartnerAddress\n...\n## Rückgabe\n...",
   "doc": {
     "name": "GetBusinessPartnerAddress",
-    "description": "Zwraca dane adresowe partnera biznesowego.",
+    "description": "Returns the address data of a business partner.",
     "version": "1.0.0",
     "lastUpdated": "2026-09-02",
     "status": "draft",
@@ -89,8 +90,8 @@ Two focused LLM calls, no web search:
 2. **`draft`** — turns that plan into the skill document: frontmatter (`name`,
    `description`, `version`, `last_updated`, `status`), the `## Cel tego skilla` prose, one
    entry per `## Query` step with `{placeholder}` tokens, and the `## Rückgabe` section
-   describing the returned columns. Prose is written **in the language of the request**;
-   table and field names stay technical/UPPERCASE.
+   describing the returned columns. All prose is written **in English**, whatever language
+   the request itself is in; table and field names stay technical/UPPERCASE.
 
 The document is then normalised, validated (`validateSkillDoc`) and rendered to Markdown
 by [`srv/lib/skillMarkdown.js`](../srv/lib/skillMarkdown.js) — the renderer is
@@ -101,6 +102,18 @@ deterministic, so the model never writes the SQL layout or the heading structure
 > represented in the model's training data, so a focused prompt is more reliable and
 > faster than scraping search results. Real grounding would come from validating the
 > chosen fields against the live system's `$metadata` — a future improvement.
+
+## Revising (`reviseSkill`)
+
+```json
+{ "markdown": "<the current document>", "instruction": "add the postal code", "version": "1.1.0" }
+```
+
+One LLM call, prompted with the SAP data-model system prompt plus revision rules: return
+the **complete** updated document, change only what was asked, keep the rest byte-for-byte,
+keep `{placeholder}` tokens, and say so in `reasoning` if the request is impossible.
+`version` / `status` override what the current document carries — the chat service passes
+the bumped version so the user sees it before saving.
 
 ## Model configuration (`srv/lib/model.js`)
 
@@ -118,7 +131,7 @@ deterministic, so the model never writes the SQL layout or the heading structure
 
 ```bash
 # generator only, no SAP – prints the Markdown document
-node --env-file=.env scripts/test-skill-agent.js "chcę dostać dane adresowe partnera"
+node --env-file=.env scripts/test-skill-agent.js "I need the address data of a business partner"
 node --env-file=.env scripts/test-skill-agent.js "..." --json   # full result object
 
 # the Markdown <-> string mapping, offline (no LLM, no SAP)

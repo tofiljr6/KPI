@@ -32,7 +32,7 @@ service SkillAuthoringService @(path: '/skill-authoring') {
 
   /**
    * Natural-language -> skill document. Does NOT persist anything.
-   * Example query: "chcę dostać dane adresowe partnera".
+   * Example query: "I need the address data of a business partner".
    * `status` defaults to 'draft', `version` to '1.0.0'.
    */
   action generateSkill(query : String, version : String, status : String) returns GeneratedSkill;
@@ -42,6 +42,22 @@ service SkillAuthoringService @(path: '/skill-authoring') {
    * Returns the raw created entity, or the draft JSON (with `error`) on failure.
    */
   action generateAndCreateSkill(query : String, version : String, status : String) returns String;
+
+  type RevisedSkill {
+    instruction : String;
+    markdown    : String;
+    doc         : SkillDoc;
+    parameters  : many String;
+    trigger     : String;
+    reasoning   : String;
+    error       : String;
+  }
+
+  /**
+   * Existing document + a change request -> the revised document. Does NOT persist.
+   * `version` / `status` override what the current document carries.
+   */
+  action reviseSkill(markdown : String, instruction : String, version : String, status : String) returns RevisedSkill;
 
   /** Markdown string -> structured document (the string->Markdown mapping). */
   action parseSkillMarkdown(markdown : String) returns SkillDoc;

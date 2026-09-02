@@ -6,7 +6,7 @@
  *
  *   ---
  *   name: GetBusinessPartnerAddress
- *   description: Zwraca dane adresowe partnera biznesowego.
+ *   description: Returns the address data of a business partner.
  *   version: 1.0.0
  *   last_updated: 2026-09-02
  *   status: draft
@@ -14,7 +14,7 @@
  *
  *   # GetBusinessPartnerAddress
  *
- *   ## Cel tego skilla
+ *   ## Purpose
  *   ...
  *
  *   ## Query
@@ -24,7 +24,7 @@
  *   SELECT ...
  *   ```
  *
- *   ## Rückgabe
+ *   ## Return
  *   ...
  *
  * `renderSkillMarkdown(doc)` and `parseSkillMarkdown(md)` are inverses:
@@ -34,15 +34,17 @@
  */
 
 export const SECTION_TITLES = {
-  purpose: 'Cel tego skilla',
+  purpose: 'Purpose',
   queries: 'Query',
-  returns: 'Rückgabe',
+  returns: 'Return',
 }
 
+// The aliases keep the older PL/DE headings readable, so documents stored before
+// the format was unified in English still parse (and normalise on re-render).
 const SECTION_ALIASES = {
-  purpose: ['cel tego skilla', 'cel', 'cel skilla', 'purpose', 'goal', 'ziel', 'ziel dieses skills'],
-  queries: ['query', 'queries', 'zapytania', 'zapytanie', 'sql', 'abfragen', 'abfrage'],
-  returns: ['ruckgabe', 'return', 'returns', 'output', 'zwrotka', 'wynik', 'wyjscie'],
+  purpose: ['purpose', 'goal', 'cel tego skilla', 'cel', 'cel skilla', 'ziel', 'ziel dieses skills'],
+  queries: ['query', 'queries', 'sql', 'zapytania', 'zapytanie', 'abfragen', 'abfrage'],
+  returns: ['return', 'returns', 'output', 'ruckgabe', 'zwrotka', 'wynik', 'wyjscie'],
 }
 
 const FRONTMATTER_ALIASES = {
@@ -294,6 +296,37 @@ export function parseSkillMarkdown(md) {
     returns: sections.returns.map((b) => trimBlock(b.lines)).filter(Boolean).join('\n\n'),
   })
 }
+
+/* -------------------------------------------------------------- version --- */
+
+const versionParts = (version) => {
+  const parts = String(version || '')
+    .trim()
+    .split('.')
+    .map((p) => parseInt(p, 10))
+  return [0, 1, 2].map((i) => (Number.isFinite(parts[i]) ? parts[i] : 0))
+}
+
+/** -1 / 0 / 1, comparing major.minor.patch numerically. */
+export function compareVersions(a, b) {
+  const left = versionParts(a)
+  const right = versionParts(b)
+  for (let i = 0; i < 3; i++) {
+    if (left[i] !== right[i]) return left[i] < right[i] ? -1 : 1
+  }
+  return 0
+}
+
+/** '1.0.0' -> '1.1.0' (minor, the default) or '1.0.1' (patch). */
+export function bumpVersion(version, level = 'minor') {
+  const [major, minor, patch] = versionParts(version)
+  if (level === 'major') return `${major + 1}.0.0`
+  if (level === 'patch') return `${major}.${minor}.${patch + 1}`
+  return `${major}.${minor + 1}.0`
+}
+
+/** Today in YYYY-MM-DD, the format `last_updated` uses. */
+export const todayStamp = () => today()
 
 /* ------------------------------------------------------------- validate --- */
 
