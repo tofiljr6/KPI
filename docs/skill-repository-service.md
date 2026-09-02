@@ -27,28 +27,39 @@ Transport: `@sap-cloud-sdk/http-client` `executeHttpRequest` + `@sap-cloud-sdk/c
 |---|---|---|
 | `GET /skill-repository/getSkills()` | `GET SkillSet` | |
 | `GET /skill-repository/getSkill(id='<id>')` | `GET SkillSet('<id>')` | |
+| `GET /skill-repository/getSkillDoc(id='<id>')` | `GET SkillSet('<id>')` | `SkillDescription` parsed back into a `SkillDoc` |
+| `GET /skill-repository/getSkillDocs()` | `GET SkillSet` | same, for every skill |
 | `POST /skill-repository/createSkill` | `POST SkillSet` | fetches an `X-CSRF-Token` first |
 
-All three return the **raw backend payload as a string** (no remodelling), and log the
-resolved `DESTINATION` plus the HTTP status.
+`getSkills`, `getSkill` and `createSkill` return the **raw backend payload as a string**
+(no remodelling), and log the resolved `DESTINATION` plus the HTTP status.
+
+`getSkillDoc` / `getSkillDocs` are the read side of the Markdown mapping: they unwrap the
+OData V2 `{ d: … }` envelope, parse `SkillDescription` with
+[`parseSkillMarkdown`](skill-markdown.md) and return
+`{ SkillName, SkillTriggerText, QueryTable, markdown, doc, parseWarnings }`.
+`parseWarnings` is empty for a well-formed document and lists the problems otherwise
+(e.g. a record written before this format).
 
 ### `createSkill` request body
 
 ```json
 {
   "skill": {
-    "SkillName": "GetBusinessPartnerIdentifications",
-    "SkillDescription": "Returns identification numbers assigned to a business partner",
-    "SkillTriggerText": "Use this skill when the user asks for identification numbers of a business partner",
-    "QueryTable": "BUT0ID",
-    "QueryFields": "PARTNER, TYPE, IDNUMBER, IDINSTITUTE, ENTRY_DATE, VALID_DATE_FROM, VALID_DATE_TO",
+    "SkillName": "GetBusinessPartnerAddress",
+    "SkillDescription": "---\nname: GetBusinessPartnerAddress\ndescription: ...\nversion: 1.0.0\nlast_updated: 2026-09-02\nstatus: draft\n---\n\n# GetBusinessPartnerAddress\n\n## Cel tego skilla\n...\n\n## Query\n...\n\n## Rückgabe\n...",
+    "SkillTriggerText": "Use this skill when the user asks for a business partner address",
+    "QueryTable": "BUT020",
+    "QueryFields": "PARTNER, ADDRNUMBER",
     "QueryWhere": "PARTNER = '{partner}'"
   }
 }
 ```
 
-`skill` is the shared type `kip.skills.SkillInput` ([`srv/skill-types.cds`](../srv/skill-types.cds)):
-`SkillName`, `SkillDescription`, `SkillTriggerText`, `QueryTable`, `QueryFields`, `QueryWhere`.
+`skill` is the shared type `kip.skills.SkillInput` ([`srv/skill-types.cds`](../srv/skill-types.cds)).
+**`SkillDescription` carries the whole skill document as a Markdown string** — see
+[skill-markdown.md](skill-markdown.md). The `Query*` fields mirror the document's *first*
+query and exist for backwards compatibility only.
 
 ## Implementation notes (`srv/lib/abapSkills.js`)
 
