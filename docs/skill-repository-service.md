@@ -16,10 +16,13 @@ ABAP OData V2 service (SAP Gateway), reached via destination **`SA1_300`**
 GET  /sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet          all skills
 GET  /sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet('<id>')  single skill
 POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet          create skill
+POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet          run one SELECT, get rows
 ```
 
 Transport: `@sap-cloud-sdk/http-client` `executeHttpRequest` + `@sap-cloud-sdk/connectivity`
-`getDestination('SA1_300')`.
+`getDestination('SA1_300')`. `SkillSet` calls live in
+[`srv/lib/abapSkills.js`](../srv/lib/abapSkills.js), the `QuerySet` call in
+[`srv/lib/abapQuery.js`](../srv/lib/abapQuery.js).
 
 ## Endpoints
 
@@ -33,6 +36,19 @@ Transport: `@sap-cloud-sdk/http-client` `executeHttpRequest` + `@sap-cloud-sdk/c
 | `POST /skill-repository/createSkill` | `POST SkillSet` | fetches an `X-CSRF-Token` first |
 | `POST /skill-repository/updateSkill` | `PUT <entity>` | replaces a stored skill, addressed by name |
 | `POST /skill-repository/deleteSkill` | `DELETE <entity>` | removes a stored skill, addressed by name |
+| `POST /skill-repository/runQuery` | `POST QuerySet` | runs one single-table `SELECT`; returns the raw backend JSON |
+
+### `runQuery` request body
+
+```json
+{ "TableName": "BUT000", "Fields": "PARTNER,TYPE,BU_GROUP",
+  "WhereClause": "PARTNER = '0000000005'", "MaxRows": 10 }
+```
+
+`Fields` is a **comma-separated** list; `MaxRows` is optional (the backend caps at 100
+when omitted). `runQuery` fetches an `X-CSRF-Token` first, like `createSkill`. It is the
+only endpoint here that is not about the skills themselves — it exists so
+[`SkillExecutionService`](skill-execution.md) has one door to SAP.
 
 `getSkills`, `getSkill` and `createSkill` return the **raw backend payload as a string**
 (no remodelling), and log the resolved `DESTINATION` plus the HTTP status.

@@ -2,10 +2,10 @@ import { executeHttpRequest } from '@sap-cloud-sdk/http-client'
 import { getDestination } from '@sap-cloud-sdk/connectivity'
 
 const DESTINATION_NAME = 'SA1_300'
-const SERVICE_PATH = '/sap/opu/odata/sap/ZXXXX_SKILL_SRV'
+export const SERVICE_PATH = '/sap/opu/odata/sap/ZXXXX_SKILL_SRV'
 const ENTITY_SET = 'SkillSet'
 
-async function resolveDestination() {
+export async function resolveDestination() {
   const d = await getDestination({ destinationName: DESTINATION_NAME })
   if (!d) throw new Error(`Destination ${DESTINATION_NAME} not found`)
   console.log('DESTINATION:', {
@@ -31,7 +31,7 @@ async function call(request, dest) {
   return typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
 }
 
-async function fetchCsrf(dest) {
+export async function fetchCsrf(dest) {
   const res = await executeHttpRequest(dest, {
     method: 'GET',
     url: `${SERVICE_PATH}/`,

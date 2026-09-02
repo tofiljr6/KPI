@@ -10,11 +10,13 @@ Each document is stored in SAP as a **plain string** in `SkillDescription`, and 
 back into fields on read — the mapping lives in
 [`srv/lib/skillMarkdown.js`](srv/lib/skillMarkdown.js) and round-trips losslessly.
 
-It does two things:
+It does three things:
 
 1. **Read/write skills in the SAP on-premise system** through an ABAP OData service.
 2. **Generate new skill documents from natural language** with an LLM
    (e.g. _"I need the address data of a business partner"_ → a skill with SELECTs on `BUT020` + `ADRC`).
+3. **Answer a data request** by routing it to one stored skill and running that skill's
+   query against SAP through the `QuerySet` entity.
 
 ## Services
 
@@ -24,6 +26,7 @@ It does two things:
 | `SkillAuthoringService` | `/skill-authoring` | Natural language → skill definition (LLM). Never calls SAP directly; delegates persistence to `SkillRepositoryService`. | [docs/skill-authoring-service.md](docs/skill-authoring-service.md) |
 | `SkillChatService` | `/skill-chat` | Façade for the chat app: slash commands, drafts, and the save/delete buttons. | [docs/skill-chat-app.md](docs/skill-chat-app.md) |
 | `SkillRoutingService` | `/skill-routing` | Answers a data request with one stored skill — or says it does not know. | [docs/skill-routing.md](docs/skill-routing.md) |
+| `SkillExecutionService` | `/skill-execution` | Runs the chosen skill's first query against SAP (fills placeholders, zero-pads keys, calls `QuerySet`). | [docs/skill-execution.md](docs/skill-execution.md) |
 
 ```
 /create-skill ──▶ SkillChatService ──▶ SkillAuthoringService ──(plan ▶ draft ▶ render)──▶ Markdown skill doc
@@ -31,6 +34,11 @@ It does two things:
                      └─ generateAndCreateSkill ─▶ SkillRepositoryService ─▶ ABAP OData ─▶ SAP
                                                        ▲
 GET/POST skills ───────────────────────────────────────┘  (destination SA1_300, Cloud Connector)
+
+plain question ─▶ SkillChatService ─▶ SkillRoutingService  (pick one stored skill)
+                     │
+                     └─ all placeholders filled? ─▶ SkillExecutionService ─▶ SkillRepositoryService
+                                                        (fill SELECT, zero-pad keys)   └─▶ QuerySet ─▶ SAP
 ```
 
 ## Repository layout
@@ -40,18 +48,24 @@ app/
 └── chat/                       Fiori (freestyle UI5) chat app – /chat/index.html
 srv/
 ├── skill-types.cds                 shared types: SkillInput, SkillDoc, SkillQuery
-├── skill-repository-service.cds/js  /skill-repository  (SAP bridge)
+├── skill-repository-service.cds/js  /skill-repository  (SAP bridge: SkillSet + QuerySet)
 ├── skill-authoring-service.cds/js   /skill-authoring   (LLM generation)
+├── skill-routing-service.cds/js     /skill-routing     (question → one stored skill)
+├── skill-execution-service.cds/js   /skill-execution   (run the chosen skill's query)
+├── skill-chat-service.cds/js        /skill-chat        (chat façade)
 └── lib/
-    ├── abapSkills.js               ABAP OData calls (destination, CSRF)  — used only by the repository service
+    ├── abapSkills.js               ABAP OData calls for SkillSet (destination, CSRF) — repository service only
+    ├── abapQuery.js                ABAP OData call for QuerySet (POST + CSRF)        — repository service only
     ├── skillAgent.js               plan → draft pipeline, doc ⇄ SkillInput mapping
     ├── skillMarkdown.js            skill document ⇄ Markdown string (render / parse / validate)
     ├── skillRouter.js              stored skills as tools; picks the one that answers a question
+    ├── skillExecutor.js            skill query → QuerySet payload (fields, {placeholder}s, zero-padding)
     └── model.js                    ChatOpenAI config (env or VCAP_SERVICES)
 scripts/
 ├── test-skill-agent.js            generator only, no SAP
 ├── test-skill-markdown.js         Markdown ⇄ string mapping, fully offline
 ├── test-skill-router.js           routing wiring, fully offline
+├── test-skill-executor.js         QuerySet payload building, fully offline
 ├── test-skill-routing-live.js     routing against the real model (needs a key, no SAP)
 └── test-save-skill.js             generate + POST to SAP
 docs/
@@ -80,5 +94,6 @@ npx cds watch
 - `SkillAuthoringService` → `http://localhost:4004/skill-authoring`
 - `SkillChatService` → `http://localhost:4004/skill-chat`
 - `SkillRoutingService` → `http://localhost:4004/skill-routing`
+- `SkillExecutionService` → `http://localhost:4004/skill-execution`
 
 Hit a snag? [docs/troubleshooting.md](docs/troubleshooting.md).

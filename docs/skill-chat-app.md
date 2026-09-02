@@ -20,7 +20,7 @@ enforced on the server too: `chat` never writes, only `saveSkill` and `confirmDe
 | `/update-skill <name or text>` | opens a stored skill for editing |
 | `/delete-skill <name or text>` | shows the skill with a **Delete skill** button |
 | plain message, document open | a revision instruction — the document is rewritten |
-| plain message, nothing open | a data request — [routed](skill-routing.md) to the stored skill that answers it |
+| plain message, nothing open | a data request — [routed](skill-routing.md) to a stored skill and, if every placeholder has a value, [run](skill-execution.md) against SAP |
 | `/help` | lists the commands |
 
 The commands are discoverable in three places: the empty-state tiles, a `/create-skill`
@@ -67,12 +67,20 @@ the chosen name. The command alone never deletes anything.
 
 A plain message with no draft open goes to [`SkillRoutingService`](skill-routing.md): every
 stored skill becomes a tool and the model must call exactly one of them, or the explicit
-`no_matching_skill`. The reply names the skill and the parameter values it found, and shows
-the document **read-only** — it is an answer, not a draft, so it carries no buttons and does
-not become the chat's editing context.
+`no_matching_skill`.
 
-When nothing fits, the answer is "I do not know how to do that" plus what was missing. The
-model cannot fall back on its own SAP knowledge.
+- **A skill matches and every `{placeholder}` has a value** → the chat calls
+  [`SkillExecutionService`](skill-execution.md), which fills the skill's first query
+  (zero-padding `PARTNER` and friends), runs it through `QuerySet` and returns the rows.
+  The reply shows the `SELECT` that ran and a Markdown table of the result (capped at 50
+  rows).
+- **A skill matches but a placeholder is missing** → the reply names the skill and asks
+  for the missing value; nothing is sent to SAP.
+- **Nothing fits** → "I do not know how to do that" plus what was missing. The model
+  cannot fall back on its own SAP knowledge.
+
+The routed document is shown **read-only** — it is an answer, not a draft, so it carries no
+buttons and does not become the chat's editing context.
 
 ### Safety rails
 
@@ -96,7 +104,7 @@ Base path: `/skill-chat` · [`srv/skill-chat-service.cds`](../srv/skill-chat-ser
 | `POST /skill-chat/confirmDelete` | the **Delete skill** button: `{ name }` | yes |
 | `GET /skill-chat/commands()` | the commands the input suggests — single source of truth for the UI | no |
 
-`ChatReply`: `role`, `kind` (`text` \| `skill` \| `delete` \| `choice` \| `error`), `text`
+`ChatReply`: `role`, `kind` (`text` \| `skill` \| `route` \| `delete` \| `choice` \| `error`), `text`
 (Markdown for the bubble), `command`, `actions` (`save` \| `delete` — which buttons the
 card shows), `markdown`, `skill` (`SkillDoc`), `parameters`, `mode`, `target`,
 `storedVersion`, `candidates`, `saved`, `error`.
@@ -104,9 +112,11 @@ card shows), `markdown`, `skill` (`SkillDoc`), `parameters`, `mode`, `target`,
 `ChatContext` — what the UI sends back each turn: `markdown` (as the user last edited it),
 `name`, `mode` (`create` \| `update`), `storedVersion`.
 
-The service is a façade: it never calls the LLM or SAP itself, it only routes to the two
-existing services. Provider errors are trimmed to their first line (240 chars) and
-wrapped in a fenced block so a stack trace cannot blow up the layout.
+The service is a façade: it never calls the LLM or SAP itself, it only delegates to
+`SkillAuthoringService` (generate/revise), `SkillRepositoryService` (find/persist/delete),
+`SkillRoutingService` (pick a skill) and `SkillExecutionService` (run it). Provider errors
+are trimmed to their first line (240 chars) and wrapped in a fenced block so a stack trace
+cannot blow up the layout.
 
 ## App structure
 

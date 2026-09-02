@@ -50,6 +50,7 @@ Services:
 
 | Command | Needs | Purpose |
 |---|---|---|
+| `npm run test:markdown` / `test:router` / `test:executor` | nothing | offline unit checks (Markdown mapping, routing wiring, `QuerySet` payload building) |
 | `node --env-file=.env scripts/test-skill-agent.js "<query>"` | `OPENAI_API_KEY` | generator only, no SAP call |
 | `node --env-file=.env scripts/test-save-skill.js "<query>"` | `.env` full + `OPENAI_API_KEY` | generate a skill **and** POST it to SAP, then read back |
 | `node --env-file=.env scripts/test-save-skill.js --skill '<json>'` | `.env` full | POST a hand-written skill (skip generation) |

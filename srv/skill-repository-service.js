@@ -8,6 +8,7 @@ import {
   deleteSkill,
   unwrap,
 } from './lib/abapSkills.js'
+import { runQuery } from './lib/abapQuery.js'
 import { parseSkillMarkdown, validateSkillDoc } from './lib/skillMarkdown.js'
 
 const status = (err) => err?.response?.status || 500
@@ -154,6 +155,18 @@ export default cds.service.impl(function () {
       return await createSkill(skill)
     } catch (err) {
       console.error('createSkill failed', err?.response?.data ?? err)
+      return req.error(status(err), err.message)
+    }
+  })
+
+  this.on('runQuery', async (req) => {
+    const { TableName, Fields, WhereClause, MaxRows } = req.data
+    if (!TableName || !TableName.trim()) return req.error(400, 'Missing "TableName"')
+    if (!Fields || !Fields.trim()) return req.error(400, 'Missing "Fields"')
+    try {
+      return await runQuery({ TableName, Fields, WhereClause, MaxRows })
+    } catch (err) {
+      console.error('runQuery failed', err?.response?.data ?? err)
       return req.error(status(err), err.message)
     }
   })

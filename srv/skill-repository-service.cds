@@ -7,6 +7,7 @@ using { kip.skills.SkillInput, kip.skills.SkillDoc } from './skill-types';
  *   GET  /sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet          -> all skills
  *   GET  /sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet('<id>')  -> single skill
  *   POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/SkillSet          -> create skill
+ *   POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet          -> run one SELECT, get rows
  */
 service SkillRepositoryService @(path: '/skill-repository') {
 
@@ -49,4 +50,12 @@ service SkillRepositoryService @(path: '/skill-repository') {
 
   /** Deletes a stored skill (DELETE), addressed by its name. */
   action deleteSkill(name : String) returns String;
+
+  /**
+   * Runs one single-table SELECT through the ABAP QuerySet entity and returns the raw
+   * backend JSON. `Fields` is a comma-separated field list; `MaxRows` is optional (the
+   * backend caps at 100 when omitted). This is the only data path that is not about
+   * skills themselves.
+   */
+  action runQuery(TableName : String, Fields : String, WhereClause : String, MaxRows : Integer) returns String;
 }
