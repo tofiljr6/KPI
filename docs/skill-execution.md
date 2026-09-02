@@ -23,16 +23,19 @@ entity that runs one single-table `SELECT` described by the request body:
 ```
 POST /sap/opu/odata/sap/ZXXXX_SKILL_SRV/QuerySet
 {
-  "TableName": "BUT000",
+  "TableNmae": "BUT000",
   "Fields": "PARTNER,TYPE,BU_GROUP",
   "WhereClause": "PARTNER = '0000000005'",
   "MaxRows": 10
 }
 ```
 
+`TableNmae` is spelled that way in the ABAP entity — `srv/lib/abapQuery.js` renames
+`TableName` to it on the wire, everything above that layer uses `TableName`.
+
 | Field | Meaning |
 |---|---|
-| `TableName` | the SAP table to read |
+| `TableNmae` | the SAP table to read |
 | `Fields` | **comma-separated** field list (no `JOIN`, one table) |
 | `WhereClause` | the `WHERE` body, without the `WHERE` keyword |
 | `MaxRows` | optional — the backend caps at **100** when it is omitted |
