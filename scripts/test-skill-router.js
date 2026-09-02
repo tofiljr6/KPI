@@ -74,6 +74,48 @@ assert.deepEqual(Object.keys(tool.function.parameters.properties), ['partner'])
 const multi = skillToTool(skills[2])
 assert.deepEqual(Object.keys(multi.function.parameters.properties).sort(), ['matnr', 'spras'])
 
+// a chained multi-table skill only asks the caller for the first step's key –
+// {addrnumber} is produced by step 1, not supplied by the user
+const chained = {
+  SkillName: 'GetBusinessPartnerCity',
+  SkillTriggerText: 'Use this skill when the user asks for the city of a business partner',
+  doc: parseSkillMarkdown(`---
+name: GetBusinessPartnerCity
+description: the city of a business partner
+version: 1.0.0
+last_updated: 2026-09-02
+status: active
+---
+
+# GetBusinessPartnerCity
+
+## Purpose
+City of a partner.
+
+## Query
+
+### 1. Address number
+
+\`\`\`sql
+SELECT PARTNER, ADDRNUMBER
+  FROM BUT020
+ WHERE PARTNER = '{partner}'
+\`\`\`
+
+### 2. City
+
+\`\`\`sql
+SELECT ADDRNUMBER, CITY1
+  FROM ADRC
+ WHERE ADDRNUMBER = '{addrnumber}'
+\`\`\`
+
+## Return
+One row with CITY1.
+`),
+}
+assert.deepEqual(Object.keys(skillToTool(chained).function.parameters.properties), ['partner'])
+
 // 2. the model is forced to choose, and sees every skill plus the escape hatch
 const stub = stubModel({ name: 'GetBusinessPartnerEmail', args: { partner: '771' } })
 const hit = await routeQuestion('I need the email address of partner 771', skills, { chat: stub })

@@ -24,7 +24,9 @@ answer. Two things prevent it:
 1. **Every stored skill becomes a tool.** `getSkillDocs()` loads the repository, and each
    skill turns into an OpenAI tool: its name, a description built from the document
    (`description`, trigger text, purpose, the tables it reads), and one string parameter
-   per `{placeholder}` its queries use.
+   per `{placeholder}` the caller must supply — `requiredPlaceholders` excludes the ones a
+   later query step gets from an earlier step (a chained multi-table skill only asks for
+   the first step's key).
 2. **The model must call one** — `tool_choice: 'required'`. It cannot reply with prose, so
    it cannot answer the question itself. Alongside the skills it gets one more tool,
    `no_matching_skill(missing)`, which is the only way to say "nothing here fits". The
@@ -50,8 +52,8 @@ Four further guards live in `routeQuestion`:
 |---|---|
 | `matched` | whether a stored skill covers the request |
 | `skillName`, `skill` | the chosen skill and its parsed document |
-| `parameters` | `[{ name, value }]` — placeholder values taken from the request |
-| `missing` | placeholders the caller still has to supply |
+| `parameters` | `[{ name, value }]` — required placeholder values taken from the request |
+| `missing` | required placeholders the caller still has to supply (chained ones excluded) |
 | `reason` | why nothing matched, when `matched` is false |
 | `considered` | how many skills were offered to the model |
 

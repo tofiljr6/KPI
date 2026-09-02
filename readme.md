@@ -26,7 +26,7 @@ It does three things:
 | `SkillAuthoringService` | `/skill-authoring` | Natural language → skill definition (LLM). Never calls SAP directly; delegates persistence to `SkillRepositoryService`. | [docs/skill-authoring-service.md](docs/skill-authoring-service.md) |
 | `SkillChatService` | `/skill-chat` | Façade for the chat app: slash commands, drafts, and the save/delete buttons. | [docs/skill-chat-app.md](docs/skill-chat-app.md) |
 | `SkillRoutingService` | `/skill-routing` | Answers a data request with one stored skill — or says it does not know. | [docs/skill-routing.md](docs/skill-routing.md) |
-| `SkillExecutionService` | `/skill-execution` | Runs the chosen skill's first query against SAP (fills placeholders, zero-pads keys, calls `QuerySet`). | [docs/skill-execution.md](docs/skill-execution.md) |
+| `SkillExecutionService` | `/skill-execution` | Runs the chosen skill's query step(s) against SAP — fills placeholders, zero-pads keys, chains multi-table skills, formats the result per `## Return`. | [docs/skill-execution.md](docs/skill-execution.md) |
 
 ```
 /create-skill ──▶ SkillChatService ──▶ SkillAuthoringService ──(plan ▶ draft ▶ render)──▶ Markdown skill doc

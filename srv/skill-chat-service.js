@@ -266,7 +266,13 @@ export default cds.service.impl(function () {
 
     return reply(
       'route',
-      `_Answered with **${route.skillName}**._\n\n${body}`,
+      [
+        `_Answered with **${route.skillName}**._`,
+        body,
+        run.note ? `_${run.note}_` : null,
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
       routeExtra
     )
   }

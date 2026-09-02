@@ -91,9 +91,10 @@ Three steps:
 1. **`plan`** — a chat prompted as a _senior SAP data-model expert across all modules_
    (SD, MM, FI/CO, HCM, PP, BP, …). Structured output: the primary transparent table, its
    key field, candidate fields, a `confidence` (`high`/`medium`/`low`), alternatives, and
-   **1–4 execution steps** — each step one single-table `SELECT`, no JOINs. Extra steps
-   are for data reached through a mapping table (`BUT020` → `ADDRNUMBER` → `ADRC`); a
-   `dependsOn` field records which earlier value a step consumes.
+   **1–4 execution steps**. `QuerySet` cannot JOIN, so whenever the answer needs columns
+   from two or more tables the plan **must** use one step per table — step 1 selects the
+   linking key, step 2 filters the next table on it (`BUT020` → `ADDRNUMBER` → `ADRC`),
+   with `dependsOn` recording which earlier column feeds the step.
 2. **`draft`** — turns that plan into the skill document: frontmatter (`name`,
    `description`, `version`, `last_updated`, `status`), the `## Cel tego skilla` prose, one
    entry per `## Query` step with `{placeholder}` tokens, and the `## Rückgabe` section

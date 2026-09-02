@@ -1,4 +1,5 @@
 import { model } from './model.js'
+import { requiredPlaceholders } from './skillMarkdown.js'
 
 /**
  * Skill routing: which stored skill answers a question?
@@ -40,15 +41,12 @@ const truncate = (text, max) => {
   return value.length > max ? value.slice(0, max - 1) + '…' : value
 }
 
-/** Every {placeholder} the skill's queries need, as tool parameters. */
-function parametersOf(doc) {
-  const tokens = new Set()
-  for (const query of doc?.queries || []) {
-    const source = `${query.whereClause || ''} ${query.sql || ''}`
-    for (const match of source.matchAll(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g)) tokens.add(match[1])
-  }
-  return [...tokens]
-}
+/**
+ * The {placeholder}s the caller must supply, as tool parameters. Placeholders a later
+ * step gets from an earlier step's result (chained multi-table skills) are excluded —
+ * see requiredPlaceholders.
+ */
+const parametersOf = (doc) => requiredPlaceholders(doc)
 
 /** One stored skill -> one OpenAI tool definition. */
 export function skillToTool(skill) {
