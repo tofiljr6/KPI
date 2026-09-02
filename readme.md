@@ -17,9 +17,6 @@ It does two things:
 | `SkillRepositoryService` | `/skill-repository` | The **only** component that talks to SAP on-premise. Bridges to ABAP OData `ZXXXX_SKILL_SRV` via destination `SA1_300`. | [docs/skill-repository-service.md](docs/skill-repository-service.md) |
 | `SkillAuthoringService` | `/skill-authoring` | Natural language → skill definition (LLM). Never calls SAP directly; delegates persistence to `SkillRepositoryService`. | [docs/skill-authoring-service.md](docs/skill-authoring-service.md) |
 
-UI: a freestyle SAPUI5/Fiori app at `/skills/index.html` — a **List Report** of all
-skills plus an **Object Page** to generate and save a new one. [docs/ui.md](docs/ui.md).
-
 ```
 NL query ──▶ SkillAuthoringService ──(findSapTable ▶ draft)──▶ skill draft
                      │
@@ -39,15 +36,12 @@ srv/
     ├── abapSkills.js               ABAP OData calls (destination, CSRF)  — used only by the repository service
     ├── skillAgent.js               findSapTable → draft pipeline
     └── model.js                    ChatOpenAI config (env or VCAP_SERVICES)
-app/
-└── skills/                         SAPUI5/Fiori app  →  /skills/index.html
 scripts/
 ├── test-skill-agent.js            generator only, no SAP
 └── test-save-skill.js             generate + POST to SAP
 docs/
 ├── skill-repository-service.md
 ├── skill-authoring-service.md
-├── ui.md
 ├── local-development.md
 └── troubleshooting.md
 ```
@@ -63,7 +57,7 @@ cp .env.example .env      # then fill in / generate the values
 npx cds watch
 ```
 
-- `SkillRepositoryService` → `http://localhost:4004/odata/v4/skill-repository`
-- `SkillAuthoringService` → `http://localhost:4004/odata/v4/skill-authoring`
+- `SkillRepositoryService` → `http://localhost:4004/skill-repository`
+- `SkillAuthoringService` → `http://localhost:4004/skill-authoring`
 
 Hit a snag? [docs/troubleshooting.md](docs/troubleshooting.md).

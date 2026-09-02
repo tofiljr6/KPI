@@ -25,9 +25,9 @@ Transport: `@sap-cloud-sdk/http-client` `executeHttpRequest` + `@sap-cloud-sdk/c
 
 | CAP endpoint | Backend call | Notes |
 |---|---|---|
-| `GET /odata/v4/skill-repository/getSkills()` | `GET SkillSet` | |
-| `GET /odata/v4/skill-repository/getSkill(id='<id>')` | `GET SkillSet('<id>')` | |
-| `POST /odata/v4/skill-repository/createSkill` | `POST SkillSet` | fetches an `X-CSRF-Token` first |
+| `GET /skill-repository/getSkills()` | `GET SkillSet` | |
+| `GET /skill-repository/getSkill(id='<id>')` | `GET SkillSet('<id>')` | |
+| `POST /skill-repository/createSkill` | `POST SkillSet` | fetches an `X-CSRF-Token` first |
 
 All three return the **raw backend payload as a string** (no remodelling), and log the
 resolved `DESTINATION` plus the HTTP status.
@@ -65,5 +65,5 @@ See [local-development.md](local-development.md#test-scripts). Quick check once
 `cds watch` runs:
 
 ```bash
-curl -s "http://localhost:4004/odata/v4/skill-repository/getSkills()"
+curl -s "http://localhost:4004/skill-repository/getSkills()"
 ```

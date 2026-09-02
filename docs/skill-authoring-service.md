@@ -10,8 +10,8 @@ for persistence it calls `SkillRepositoryService`.
 
 | CAP endpoint | What it does |
 |---|---|
-| `POST /odata/v4/skill-authoring/generateSkill` | natural language → skill draft. No persistence. |
-| `POST /odata/v4/skill-authoring/generateAndCreateSkill` | `generateSkill`, then `SkillRepositoryService.createSkill` |
+| `POST /skill-authoring/generateSkill` | natural language → skill draft. No persistence. |
+| `POST /skill-authoring/generateAndCreateSkill` | `generateSkill`, then `SkillRepositoryService.createSkill` |
 
 Request body for both:
 

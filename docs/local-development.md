@@ -41,8 +41,8 @@ connection.
 
 Services:
 
-- `http://localhost:4004/odata/v4/skill-repository`
-- `http://localhost:4004/odata/v4/skill-authoring`
+- `http://localhost:4004/skill-repository`
+- `http://localhost:4004/skill-authoring`
 
 ## Test scripts
 
