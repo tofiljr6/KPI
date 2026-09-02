@@ -144,11 +144,6 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
 }
 
 .kipInputActions { padding: 0 0.25rem 0.1rem; }
-.kipSlashHint .sapMBtnInner {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 0.78rem;
-  color: var(--kip-muted);
-}
 
 .kipFootnote.sapMText { color: var(--kip-muted); font-size: 0.72rem; text-align: center; width: 100%; }
 
