@@ -19,7 +19,7 @@ enforced on the server too: `chat` never writes, only `saveSkill` and `confirmDe
 | `/create-skill <existing name>` | opens that stored skill instead of drafting a duplicate |
 | `/update-skill <name or text>` | opens a stored skill for editing |
 | `/delete-skill <name or text>` | shows the skill with a **Delete skill** button |
-| plain message, document open | a revision instruction — the document is rewritten |
+| plain message, **unsaved** draft open | a revision instruction — the document is rewritten |
 | plain message, nothing open | a data request — [routed](skill-routing.md) to a stored skill and, if every placeholder has a value, [run](skill-execution.md) against SAP |
 | `/help` | lists the commands |
 
@@ -40,6 +40,10 @@ starts with `/`.
 The card's **Edit** button swaps the rendered document for a monospace textarea. Edits
 live in that chat: they are kept on the message, sent with the next turn as `ChatContext`,
 and are what **Save skill** persists.
+
+While the draft is unsaved, a plain message revises it. **Once it is saved, the chat drops
+the draft** — the next plain message is a data request again, [routed and run](skill-routing.md).
+Changing a stored skill from then on needs an explicit `/update-skill`.
 
 ### Changing a stored skill
 
