@@ -4,49 +4,94 @@ A freestyle SAPUI5 app in [`app/chat`](../app/chat) with a Claude-style chat sur
 the CAP service behind it. Open it at **`http://localhost:4004/chat/index.html`**
 once `cds watch` runs.
 
-The whole UI is in English; only the stored skill document keeps its
-`## Cel tego skilla` / `## Rückgabe` headings ([skill-markdown.md](skill-markdown.md)).
+Everything is in English — the UI, the assistant's replies and the stored skill
+documents ([skill-markdown.md](skill-markdown.md)).
 
 ## Workflow
 
-Plain chat **does nothing on its own** — the assistant answers that it only acts on
-commands and points at `/create-skill`. The commands are discoverable in three places:
-the empty-state tiles, a `/create-skill` chip next to the send button, and an
-autocomplete list that appears as soon as the input starts with `/`.
+Nothing is written to SAP by a command. Commands and plain chat only produce a draft; the
+write happens when the user clicks **Save skill** or **Delete skill** on the card. That is
+enforced on the server too: `chat` never writes, only `saveSkill` and `confirmDelete` do.
 
 | Input | What happens |
 |---|---|
-| anything without a leading `/` | a short reply explaining that only commands act, with an example |
+| `/create-skill <description>` | drafts a new skill — **not saved** |
+| `/create-skill <existing name>` | opens that stored skill instead of drafting a duplicate |
+| `/update-skill <name or text>` | opens a stored skill for editing |
+| `/delete-skill <name or text>` | shows the skill with a **Delete skill** button |
+| plain message, document open | a revision instruction — the document is rewritten |
+| plain message, nothing open | a short reply explaining that only commands act |
 | `/help` | lists the commands |
-| `/create-skill <description>` | generate → validate → save, then show the document |
-| `/create-skill` (no description) | asks for the description |
-| any other `/command` | "I do not know the command …" plus the command list |
 
-`/create-skill` runs the full chain and answers with a collapsible card holding the
-generated Markdown document (with a **Copy Markdown** button):
+The commands are discoverable in three places: the empty-state tiles, a `/create-skill`
+chip next to the send button, and an autocomplete list that appears as soon as the input
+starts with `/`.
+
+### Drafting and saving
 
 ```
-UI → SkillChatService.chat
-       → SkillAuthoringService.generateSkill   (plan → draft → render)
-       → SkillRepositoryService.createSkill    (POST SkillSet, SkillDescription = Markdown)
+/create-skill I need the address data of a business partner
+  → SkillChatService.chat → SkillAuthoringService.generateSkill   (plan → draft → render)
+  → card with the document, unsaved
+[Edit] → the raw Markdown in a textarea, edited by hand
+[Save skill] → SkillChatService.saveSkill → SkillRepositoryService.createSkill
 ```
 
-Failures never break the thread: a generation error, an incomplete document or a failed
-save each come back as an error bubble. When the document was generated but the save
-failed, the card is still shown (with an amber border) so nothing is lost.
+The card's **Edit** button swaps the rendered document for a monospace textarea. Edits
+live in that chat: they are kept on the message, sent with the next turn as `ChatContext`,
+and are what **Save skill** persists.
+
+### Changing a stored skill
+
+```
+/update-skill GetBusinessPartnerAddress      (or /create-skill with the same name)
+  → the stored document is loaded into the chat
+"also return the postal code"
+  → SkillAuthoringService.reviseSkill → revised document, version bumped
+[Save skill (update)] → SkillRepositoryService.updateSkill (PUT)
+```
+
+Version handling: the draft shows the bumped version — computed off the **stored** version
+kept in the context, so repeated edits stay at one bump — and `saveSkill` guarantees it
+regardless of hand edits: `last_updated` is always set to today, and on an update the
+version is raised above the stored one if it is not already higher.
+
+### Deleting
+
+`/delete-skill` resolves the argument through `findSkills`. An exact name (or a single
+hit) produces a confirmation card with a red border and a **Delete skill** button;
+several matches produce a list of candidates to click, which re-issues the command with
+the chosen name. The command alone never deletes anything.
+
+### Safety rails
+
+- Buttons appear **only on the newest card**, so a stale draft in the scrollback cannot be
+  saved or deleted by accident. Older candidate lists are dimmed and inert.
+- `saveSkill` validates the document first: a missing section or a query without a
+  resolvable table comes back as an error and SAP is never called.
+- A failure at any step — generation, revision, an unreachable backend, a rejected write —
+  comes back as an error bubble. A document that was generated but not saved is still
+  shown, so nothing is lost.
 
 ## SkillChatService
 
 Base path: `/skill-chat` · [`srv/skill-chat-service.cds`](../srv/skill-chat-service.cds) ·
 [`srv/skill-chat-service.js`](../srv/skill-chat-service.js)
 
-| Endpoint | Purpose |
-|---|---|
-| `POST /skill-chat/chat` | one turn: `{ "message": "/create-skill ..." }` → `ChatReply` |
-| `GET /skill-chat/commands()` | the commands the input suggests — single source of truth for the UI |
+| Endpoint | Purpose | Writes? |
+|---|---|---|
+| `POST /skill-chat/chat` | one turn: `{ "message": "...", "context": { … } }` → `ChatReply` | no |
+| `POST /skill-chat/saveSkill` | the **Save skill** button: `{ markdown, mode, name, storedVersion }` | yes |
+| `POST /skill-chat/confirmDelete` | the **Delete skill** button: `{ name }` | yes |
+| `GET /skill-chat/commands()` | the commands the input suggests — single source of truth for the UI | no |
 
-`ChatReply`: `role`, `kind` (`text` \| `skill` \| `error`), `text` (Markdown for the
-bubble), `command`, `markdown`, `skill` (`SkillDoc`), `parameters`, `saved`, `error`.
+`ChatReply`: `role`, `kind` (`text` \| `skill` \| `delete` \| `choice` \| `error`), `text`
+(Markdown for the bubble), `command`, `actions` (`save` \| `delete` — which buttons the
+card shows), `markdown`, `skill` (`SkillDoc`), `parameters`, `mode`, `target`,
+`storedVersion`, `candidates`, `saved`, `error`.
+
+`ChatContext` — what the UI sends back each turn: `markdown` (as the user last edited it),
+`name`, `mode` (`create` \| `update`), `storedVersion`.
 
 The service is a façade: it never calls the LLM or SAP itself, it only routes to the two
 existing services. Provider errors are trimmed to their first line (240 chars) and

@@ -3,7 +3,7 @@
  * Run inside BAS so the SA1_300 destination / local proxy is reachable.
  *
  *   # generate from a query, then POST to ABAP:
- *   node --env-file=.env scripts/test-save-skill.js "chcę dostać dane adresowe partnera"
+ *   node --env-file=.env scripts/test-save-skill.js "I need the address data of a business partner"
  *
  *   # or skip generation and POST a skill JSON directly:
  *   node --env-file=.env scripts/test-save-skill.js --skill '{"SkillName":"GetX","QueryTable":"BUT000","QueryFields":"PARTNER","QueryWhere":"PARTNER = '"'"'{partner}'"'"'"}'
@@ -20,7 +20,7 @@ if (args[0] === '--skill') {
   skill = JSON.parse(args[1])
   console.log('Using skill from argument:\n', JSON.stringify(skill, null, 2))
 } else {
-  const query = args[0] || 'chcę dostać dane adresowe partnera'
+  const query = args[0] || 'I need the address data of a business partner'
   console.log(`Generating skill for: "${query}"`)
   const draft = await runSkillAgent(query)
   console.log('\nDraft:\n', JSON.stringify(draft, null, 2))

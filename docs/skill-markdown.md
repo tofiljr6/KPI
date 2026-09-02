@@ -9,7 +9,7 @@ Implementation: [`srv/lib/skillMarkdown.js`](../srv/lib/skillMarkdown.js).
 ````markdown
 ---
 name: GetBusinessPartnerAddress
-description: "Zwraca dane adresowe partnera biznesowego: miasto, ulicę i kod pocztowy."
+description: "Returns the address data of a business partner: city, street and postal code."
 version: 1.0.0
 last_updated: 2026-09-02
 status: draft
@@ -17,18 +17,18 @@ status: draft
 
 # GetBusinessPartnerAddress
 
-## Cel tego skilla
+## Purpose
 
-Skill odpowiada na pytania o **adres partnera biznesowego**.
+Answers questions about the **address of a business partner**.
 
-- wymaga numeru partnera (`PARTNER`)
-- nie zwraca danych bankowych ani identyfikatorów
+- needs the partner number (`PARTNER`)
+- does not return bank data or identification numbers
 
 ## Query
 
-### 1. Numer adresu partnera
+### 1. Address number of the partner
 
-Mapuje PARTNER na ADDRNUMBER. Potrzebuje {partner}.
+Maps PARTNER to ADDRNUMBER. Needs {partner}.
 
 ```sql
 SELECT PARTNER, ADDRNUMBER, ADR_KIND
@@ -36,9 +36,9 @@ SELECT PARTNER, ADDRNUMBER, ADR_KIND
  WHERE PARTNER = '{partner}'
 ```
 
-### 2. Dane adresowe
+### 2. Address data
 
-Właściwy adres z ADRC, dla {addrnumber} z kroku 1.
+The address itself from ADRC, for the {addrnumber} of step 1.
 
 ```sql
 SELECT ADDRNUMBER, NAME1, CITY1, POST_CODE1, STREET
@@ -46,26 +46,28 @@ SELECT ADDRNUMBER, NAME1, CITY1, POST_CODE1, STREET
  WHERE ADDRNUMBER = '{addrnumber}'
 ```
 
-## Rückgabe
+## Return
 
-Jeden wiersz na adres:
+One row per address:
 
-| Pole | Znaczenie |
+| Column | Meaning |
 |---|---|
-| CITY1 | Miasto |
-| STREET | Ulica |
+| CITY1 | City |
+| STREET | Street |
 
-Pusty wynik = partner nie ma adresu.
+An empty result means the partner has no address.
 ````
 
 - **Frontmatter** — `name`, `description`, `version`, `last_updated` (`YYYY-MM-DD`),
   `status` (`draft` \| `active` \| `deprecated`). Values are quoted only when they need it.
 - **`# heading`** — the skill name, PascalCase; wins over `name:` when the two differ.
-- **`## Cel tego skilla`** — what the skill answers, what it does not cover, which
-  identifier the caller must have.
+- **`## Purpose`** — what the skill answers, what it does not cover, which identifier
+  the caller must have.
 - **`## Query`** — one `### n. Name` block per **single-table SELECT** (1–4), each with a
   short description and one ` ```sql ` block. Runtime values are `{placeholder}` tokens.
-- **`## Rückgabe`** — the result shape: a column table, cardinality, meaning of an empty result.
+- **`## Return`** — the result shape: a column table, cardinality, meaning of an empty result.
+
+Everything is written in English — headings, prose and generated text alike.
 
 ## API
 
@@ -76,17 +78,24 @@ import {
   validateSkillDoc,      // doc  -> string[] of problems ([] = usable)
   buildSql, parseSql,    // { table, fields, whereClause } <-> formatted SELECT
   placeholdersOf,        // query -> ['partner', ...]
+  bumpVersion,           // '1.0.0' -> '1.1.0' (minor) | '1.0.1' (patch)
+  compareVersions,       // -1 / 0 / 1
+  todayStamp,            // 'YYYY-MM-DD', what last_updated uses
 } from './srv/lib/skillMarkdown.js'
 ```
+
+`bumpVersion` / `compareVersions` are what a save relies on: every save stamps
+`last_updated` with today, and an update additionally guarantees a version higher than
+the one currently stored.
 
 The document object:
 
 ```js
 {
   name, description, version, lastUpdated, status,   // frontmatter
-  purpose,                                           // ## Cel tego skilla
+  purpose,                                           // ## Purpose
   queries: [{ name, description, table, fields: [], whereClause, sql }],
-  returns,                                           // ## Rückgabe
+  returns,                                           // ## Return
 }
 ```
 
@@ -100,9 +109,12 @@ The parser is deliberately lenient, so hand-edited documents still load:
 
 | Section | Also accepted |
 |---|---|
-| `## Cel tego skilla` | `## Cel`, `## Purpose`, `## Goal`, `## Ziel` |
-| `## Query` | `## Queries`, `## Zapytania`, `## SQL`, `## Abfragen` |
-| `## Rückgabe` | `## Ruckgabe`, `## Return`, `## Output`, `## Wynik`, `## Zwrotka` |
+| `## Purpose` | `## Goal`, `## Cel tego skilla`, `## Cel`, `## Ziel` |
+| `## Query` | `## Queries`, `## SQL`, `## Zapytania`, `## Abfragen` |
+| `## Return` | `## Returns`, `## Output`, `## Rückgabe`, `## Wynik`, `## Zwrotka` |
+
+The PL/DE aliases are kept so documents written before the format was unified in English
+still parse; re-rendering one normalises its headings to the English form.
 
 `last updated` / `last-updated` / `updated` are accepted for `last_updated`. `###`
 numbering is optional, free-form SQL is kept as-is (`table`/`fields` are then parsed out

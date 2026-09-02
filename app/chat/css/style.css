@@ -224,3 +224,47 @@ html, body, .sapUiBody.kipChatBody { height: 100%; margin: 0; overflow: hidden; 
   .kipThread, .kipComposer { padding-left: 0.5rem; padding-right: 0.5rem; }
   .kipBubble { max-width: 95%; }
 }
+
+/* ------------------------------------------------------- candidate picker */
+
+.kipCandidates { gap: 0.4rem; margin-top: 0.25rem; }
+.kipCandidate {
+  border: 1px solid var(--kip-border);
+  border-radius: 10px;
+  padding: 0.55rem 0.8rem;
+  background: var(--kip-surface);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.kipCandidate:hover { background: var(--kip-accent-soft); border-color: var(--kip-accent); }
+.kipCandidate--stale { opacity: 0.55; cursor: default; }
+.kipCandidate--stale:hover { background: var(--kip-surface); border-color: var(--kip-border); }
+.kipCandidateHead { gap: 0.5rem; align-items: baseline; }
+.kipCandidateName.sapMText { font-weight: 600; }
+.kipCandidateMeta.sapMText { color: var(--kip-muted); font-size: 0.75rem; }
+.kipCandidateDesc.sapMText { color: var(--kip-muted); font-size: 0.8rem; margin-top: 0.1rem; }
+
+/* --------------------------------------------------------- document card */
+
+.kipDoc--delete.sapMPanel { border-color: #c0392b; }
+.kipDoc--delete .kipDocBar.sapMTB { background: #fdeeec; border-bottom-color: #f0c3bd; }
+
+.kipDocEditor { padding: 0.75rem 1rem 1rem; }
+.kipDocEditor textarea {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace !important;
+  font-size: 0.8rem !important;
+  line-height: 1.55 !important;
+  background: var(--kip-code-bg) !important;
+  border: 1px solid var(--kip-border) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  color: var(--kip-text);
+  padding: 0.7rem 0.85rem !important;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+.kipDocEditor .sapMInputBaseContentWrapper { border: none !important; box-shadow: none !important; background: transparent !important; }
+
+.kipSave .sapMBtnInner { border-radius: 10px; }
+.kipDelete .sapMBtnInner { border-radius: 10px; }
