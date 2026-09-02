@@ -13,8 +13,8 @@
 
     <!-- Fiori shell header -->
     <f:ShellBar
-      title="Skill Chat"
-      secondTitle="SAP Cloud Application Programming Model"
+      title="KIP"
+      secondTitle="KI Platform"
       showNotifications="false"
       showProductSwitcher="false"
       showSearch="false"
@@ -59,7 +59,7 @@
         <!-- slash-command autocomplete -->
         <VBox id="suggestions" class="kipSuggest" visible="{= ${/suggestions}.length > 0 }"/>
 
-        <VBox class="kipInputBox">
+        <HBox class="kipInputBox" alignItems="Center">
           <TextArea
             id="input"
             value="{/input}"
@@ -69,18 +69,24 @@
             growingMaxLines="8"
             width="100%"
             liveChange=".onLiveChange"
-            class="kipInput"/>
-          <HBox class="kipInputActions" alignItems="Center" justifyContent="End">
-            <Button
-              id="send"
-              icon="sap-icon://paper-plane"
-              type="Emphasized"
-              tooltip="Send (Enter)"
-              enabled="{= ${/input}.length > 0 &amp;&amp; !${/busy} }"
-              press=".onSend"
-              class="kipSend"/>
-          </HBox>
-        </VBox>
+            class="kipInput">
+            <layoutData>
+              <FlexItemData growFactor="1" shrinkFactor="1" minWidth="0"/>
+            </layoutData>
+          </TextArea>
+          <Button
+            id="send"
+            icon="sap-icon://paper-plane"
+            type="Emphasized"
+            tooltip="Send (Enter)"
+            enabled="{= ${/input}.length > 0 &amp;&amp; !${/busy} }"
+            press=".onSend"
+            class="kipSend">
+            <layoutData>
+              <FlexItemData growFactor="0" shrinkFactor="0"/>
+            </layoutData>
+          </Button>
+        </HBox>
 
         <Text text="Enter to send · Shift+Enter for a new line · / for commands, Tab to complete" class="kipFootnote"/>
       </VBox>
